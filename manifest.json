@@ -1,7 +1,7 @@
 {
-  "name": "ShutterPro Client Dashboard",
-  "short_name": "ShutterPro",
-  "description": "Manajemen Klien Fotografi Profesional",
+  "name": "Pencatatan costumer",
+  "short_name": "Pencatatan costumer",
+  "description": "Manajemen Clien Fotografi Profesional",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#1e2a78",
