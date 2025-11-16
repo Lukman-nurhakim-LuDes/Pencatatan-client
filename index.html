@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photography Client Dashboard</title>
+
+    <!-- PWA (Add to Home Screen) & Theme -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e2a78">
+    
+    <!-- Memuat Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Memuat Font Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- MEMUAT SUPABASE V2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Konfigurasi Kustom Tailwind (jika diperlukan) -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'brand-pink': '#ff2e4c',
+                        'brand-blue': '#1e2a78',
+                    }
+                },
+            },
+        };
+    </script>
+
+    <!-- Style Kustom untuk Glassmorphism & UI -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Latar belakang gradien Pink/Biru yang baru */
+            background: linear-gradient(120deg, #ff2e4c 0%, #1e2a78 100%);
+        }
+
+        /* Kelas Glassmorphism/Neumorphism Kustom */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            /* Transparansi yang disesuaikan */
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            /* border: 1px solid rgba(255, 255, 255, 0.1); */
+            border-radius: 1.25rem;
+            /* 20px */
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* Sidebar Aktif */
+        .sidebar-active {
+            color: #ffffff;
+            background-color: rgba(255, 255, 255, 0.15);
+            font-weight: 600;
+        }
+
+        /* Tombol Tab Pengaturan Aktif */
+        .settings-tab-btn.active-tab {
+            color: #ffffff;
+            background-color: rgba(255, 255, 255, 0.15);
+            font-weight: 600;
+        }
+
+        /* Scrollbar Kustom */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Konten Section Aktif */
+        .content-section.active {
+            display: block;
+        }
+
+        /* Menyembunyikan panah di input number */
+        input[type='number']::-webkit-inner-spin-button,
+        input[type='number']::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type='number'] {
+            -moz-appearance: textfield;
+        }
+
+        /* Animasi untuk Modal & Notifikasi */
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .fade-out {
+            animation: fadeOut 0.3s ease-in;
+        }
+
+        .slide-in-top {
+            animation: slideInTop 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .slide-out-top {
+            animation: slideOutTop 0.5s cubic-bezier(0.55, 0.085, 0.68, 0.53);
+        }
+
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+            }
+        }
+
+        @keyframes slideInTop {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOutTop {
+            from {
+                transform: translateY(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+        }
+
+        /* Tampilan Kalender */
+        .calendar-day {
+            min-height: 80px;
+            /* Tinggi minimum untuk kotak tanggal */
+        }
+
+        .calendar-day.today {
+            background-color: #ff2e4c;
+            color: #ffffff;
+            font-weight: 600;
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+
+<body class="text-gray-200">
+
+    <!-- Container Aplikasi Utama (Muncul setelah login) -->
+    <div id="app-container" class="hidden">
+
+        <!-- Sidebar -->
+        <aside id="sidebar"
+            class="glass-card fixed inset-y-0 left-0 z-30 w-64 -translate-x-full transform overflow-y-auto rounded-r-2xl border-none p-6 md:translate-x-0 md:rounded-r-none">
+            <!-- Branding/Logo -->
+            <div class="mb-8 flex items-center space-x-3">
+                <div class="rounded-lg bg-pink-600 p-2">
+                    <!-- Ikon Shutter/Kamera (SVG) -->
+                    <svg id="shutter-icon" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        xmlns="http://www.w3.org/2000/svg" class="text-white">
+                        <path
+                            d="M23.5 11H20.5C20.2239 11 20 11.2239 20 11.5V12.5C20 12.7761 20.2239 13 20.5 13H23.5C23.7761 13 24 12.7761 24 12.5V11.5C24 11.2239 23.7761 11 23.5 11Z"
+                            fill="currentColor" />
+                        <path
+                            d="M18.5 11C18.2239 11 18 11.2239 18 11.5V12.5C18 12.7761 18.2239 13 18.5 13H19.5C19.7761 13 20 12.7761 20 12.5V11.5C20 11.2239 19.7761 11 19.5 11H18.5Z"
+                            fill="currentColor" />
+                        <path
+                            d="M12 2C6.477 2 2 6.477 2 12C2 17.523 6.477 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2ZM12 20C7.589 20 4 16.411 4 12C4 7.589 7.589 4 12 4C16.411 4 20 7.589 20 12C20 16.411 16.411 20 12 20Z"
+                            fill="currentColor" />
+                        <path
+                            d="M12 7C9.23858 7 7 9.23858 7 12C7 14.7614 9.23858 17 12 17C14.7614 17 17 14.7614 17 12C17 9.23858 14.7614 7 12 7ZM12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12C15 13.6569 13.6569 15 12 15Z"
+                            fill="currentColor" />
+                    </svg>
+                </div>
+                <span class="text-xl font-bold text-white">ShutterPro</span>
+            </div>
+
+            <!-- Menu Navigasi -->
+            <nav class="space-y-2">
+                <a href="#" data-section="dashboard"
+                    class="nav-link sidebar-active group flex items-center rounded-lg px-4 py-3 text-white transition-all hover:bg-white/10">
+                    <!-- Ikon Dashboard -->
+                    <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="#" data-section="clients"
+                    class="nav-link group flex items-center rounded-lg px-4 py-3 text-gray-300 transition-all hover:bg-white/10 hover:text-white">
+                    <!-- Ikon Clients -->
+                    <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-2.13l-2.112 1.408M4 20h5v-2a3 3 0 015.356-2.13l-2.112 1.408M12 8c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" />
+                    </svg>
+                    Clients
+                </a>
+                <a href="#" data-section="bookings"
+                    class="nav-link group flex items-center rounded-lg px-4 py-3 text-gray-300 transition-all hover:bg-white/10 hover:text-white">
+                    <!-- Ikon Bookings -->
+                    <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Bookings
+                </a>
+                <a href="#" data-section="invoices"
+                    class="nav-link group flex items-center rounded-lg px-4 py-3 text-gray-300 transition-all hover:bg-white/10 hover:text-white">
+                    <!-- Ikon Invoices -->
+                    <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Invoices
+                </a>
+                <a href="#" data-section="calendar"
+                    class="nav-link group flex items-center rounded-lg px-4 py-3 text-gray-300 transition-all hover:bg-white/10 hover:text-white">
+                    <!-- Ikon Calendar -->
+                    <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 2v4m8-4v4M3 10h18M5 14h14M7 18h10M5 22h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    Calendar
+                </a>
+                <a href="#" data-section="finance"
+                    class="nav-link group flex items-center rounded-lg px-4 py-3 text-gray-300 transition-all hover:bg-white/10 hover:text-white">
+                    <!-- Ikon Finance -->
+                    <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m8-4H8a1 1 0 00-1 1v5a1 1 0 001 1h8a1 1 0 001-1v-5a1 1 0 00-1-1z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 17h6" />
+                    </svg>
+                    Finance (Perbulan)
+                </a>
+            </nav>
+
+            <!-- Menu Bawah (Settings, Sign Out) -->
+            <div class="absolute bottom-6 left-0 w-full px-6">
+                <nav class="space-y-2">
+                    <a href="#" data-section="settings"
+                        class="nav-link group flex items-center rounded-lg px-4 py-3 text-gray-300 transition-all hover:bg-white/10 hover:text-white">
+                        <!-- Ikon Settings -->
+                        <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924-1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Settings
+                    </a>
+                    <a href="#" id="sign-out-btn"
+                        class="group flex items-center rounded-lg px-4 py-3 text-gray-300 transition-all hover:bg-white/10 hover:text-white">
+                        <!-- Ikon Sign Out -->
+                        <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        Sign Out
+                    </a>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Overlay untuk Mobile (Saat Sidebar Terbuka) -->
+        <div id="sidebar-overlay" class="fixed inset-0 z-20 hidden bg-black/50 md:hidden"></div>
+
+        <!-- Konten Utama -->
+        <main class="min-h-screen md:pl-64">
+            <!-- Container utama dengan gambar latar belakang untuk efek visual (opsional) -->
+            <div class="main-container relative min-h-screen p-4">
+
+                <!-- Top Bar -->
+                <header class="mb-6 flex items-center justify-between">
+                    <!-- Tombol Menu Mobile & Judul Halaman -->
+                    <div class="flex items-center">
+                        <button id="menu-btn" class="mr-4 text-white md:hidden">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 6h16M4 12h16m-7 6h7" />
+                            </svg>
+                        </button>
+                        <h1 id="page-title" class="text-2xl font-bold text-white">Dashboard</h1>
+                    </div>
+
+                    <!-- Profil & Notifikasi -->
+                    <div class="flex items-center space-x-4">
+                        <button id="notification-btn" class="text-gray-300 hover:text-white relative">
+                            <!-- Ikon Notifikasi (Lonceng) -->
+                            <svg id="notification-icon" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            <!-- Badge Notifikasi (opsional) -->
+                            <span
+                                class="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-pink-600 text-xs"></span>
+                        </button>
+
+                        <div class="flex items-center space-x-2">
+                            <img id="user-avatar"
+                                class="h-10 w-10 rounded-full object-cover ring-2 ring-pink-600"
+                                src="https://placehold.co/40x40/f871b0/white?text=P" alt="User Avatar">
+                            <div class="hidden text-right md:block">
+                                <span id="user-email" class="block text-sm font-medium text-white">Loading...</span>
+                                <span class="block text-xs text-gray-400">Status: Online</span>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- ======================= KONTEN SECTION ======================= -->
+
+                <!-- SECTION 1: DASHBOARD -->
+                <section id="dashboard" class="content-section active space-y-6">
+                    <!-- Grid Statistik Utama -->
+                    <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+                        <!-- Stat Card 1: Total Clients -->
+                        <div class="glass-card rounded-xl p-6">
+                            <div class="mb-4 flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-300">Total Clients</span>
+                                <svg class="h-6 w-6 text-pink-400" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M17 20h5v-2a3 3 0 00-5.356-2.13l-2.112 1.408M4 20h5v-2a3 3 0 015.356-2.13l-2.112 1.408M12 8c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" />
+                                </svg>
+                            </div>
+                            <h2 id="stat-total-clients" class="text-4xl font-bold text-white">0</h2>
+                        </div>
+                        <!-- Stat Card 2: Confirmed Bookings -->
+                        <div class="glass-card rounded-xl p-6">
+                            <div class="mb-4 flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-300">Confirmed Bookings</span>
+                                <svg class="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <h2 class="text-4xl font-bold text-white">0</h2>
+                        </div>
+                        <!-- Stat Card 3: Pending Edits -->
+                        <div class="glass-card rounded-xl p-6">
+                            <div class="mb-4 flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-300">Pending Edits</span>
+                                <svg class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" />
+                                </svg>
+                            </div>
+                            <h2 class="text-4xl font-bold text-white">0</h2>
+                        </div>
+                        <!-- Stat Card 4: Revenue (Month) -->
+                        <div class="glass-card rounded-xl p-6">
+                            <div class="mb-4 flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-300">Revenue (Bulan Ini)</span>
+                                <svg class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8C7 8 7 12 7 12m0 0c0 1.105-1.343 2-3 2m0-2c0-1.105 1.343-2 3-2m0 0c0-1.105-1.343-2-3-2m0 0c-1.11 0-2.08.402-2.599 1M17 8c1.657 0 3 .895 3 2s-1.343 2-3 2-3 .895-3 2 1.343 2 3 2m0-8c-1.11 0-2.08.402-2.599 1M17 8c4.97 0 4.97 4 4.97 4m0 0c0 1.105 1.343 2 3 2m0-2c0-1.105-1.343-2-3-2m0 0c0-1.105 1.343-2 3-2m0 0c1.11 0 2.08.402 2.599 1" />
+                                </svg>
+                            </div>
+                            <h2 class="text-4xl font-bold text-white">$0</h2>
+                        </div>
+                    </div>
+
+                    <!-- Grid Konten (2 kolom) -->
+                    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                        <!-- Kolom Kiri: Upcoming Shoots -->
+                        <div class="glass-card rounded-xl p-6 lg:col-span-2">
+                            <h3 class="mb-4 text-xl font-semibold text-white">Upcoming Shoots</h3>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full text-left text-sm">
+                                    <thead>
+                                        <tr class="border-b border-white/10">
+                                            <th class="py-3 pr-4 font-semibold">Client</th>
+                                            <th class="py-3 px-4 font-semibold">Paket</th>
+                                            <th class="py-3 px-4 font-semibold">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="upcoming-shoots-table">
+                                        <!-- Status Kosong -->
+                                        <tr>
+                                            <td colspan="3" class="py-6 text-center text-gray-400">
+                                                Tidak ada pemotretan mendatang. Tambah Booking Baru!
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Kolom Kanan: Next Photoshoot & Reminder -->
+                        <div class="space-y-6">
+                            <!-- Next Photoshoot -->
+                            <div class="glass-card rounded-xl p-6">
+                                <h3 class="mb-4 text-xl font-semibold text-white">Next Photoshoot</h3>
+                                <div class="text-center text-gray-400">
+                                    Belum ada pemotretan yang dijadwalkan.
+                                </div>
+                            </div>
+
+                            <!-- Reminder Card -->
+                            <div class="glass-card rounded-xl p-6">
+                                <h3 class="mb-2 text-xl font-semibold text-white">Reminder</h3>
+                                <p class="text-gray-300">
+                                    Jangan lupa untuk follow up klien minggu lalu!
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 2: CLIENTS -->
+                <section id="clients" class="content-section hidden">
+                    <div class="glass-card rounded-xl p-6">
+                        <div class="mb-4 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+                            <h2 class="text-2xl font-bold text-white">Manajemen Klien</h2>
+                            <div class="flex w-full space-x-2 md:w-auto">
+                                <input type="text" id="client-search" placeholder="Cari klien..."
+                                    class="w-full flex-grow rounded-lg border-none bg-white/10 px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500">
+                                <button id="add-client-btn"
+                                    class="flex-shrink-0 rounded-lg bg-pink-600 px-4 py-2 font-semibold text-white transition-all hover:bg-pink-700">
+                                    Tambah Klien Baru
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tabel Klien -->
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-left text-sm">
+                                <thead>
+                                    <tr class="border-b border-white/10">
+                                        <th class="py-3 pr-4 font-semibold">Nama</th>
+                                        <th class="py-3 px-4 font-semibold">Email</th>
+                                        <th class="py-3 px-4 font-semibold">Telepon</th>
+                                        <th class="py-3 pl-4 font-semibold">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="clients-table-body">
+                                    <!-- Data dari Supabase akan dimasukkan di sini -->
+                                    <tr id="clients-empty-state">
+                                        <td colspan="4" class="py-10 text-center text-gray-400">
+                                            Belum ada data klien. Klik "Tambah Klien Baru" untuk memulai.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 3: FINANCE (PERBULAN) -->
+                <section id="finance" class="content-section hidden space-y-6">
+                    <div class="mb-4 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+                        <h2 class="text-2xl font-bold text-white">Laporan Keuangan (Perbulan)</h2>
+                        <input type="month" value="2025-11"
+                            class="rounded-lg border-none bg-white/10 px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500">
+                    </div>
+
+                    <!-- Statistik Keuangan -->
+                    <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+                        <div class="glass-card rounded-xl p-6">
+                            <div class="mb-4 flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-300">TOTAL PENDAPATAN</span>
+                                <svg class="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                            </div>
+                            <h2 class="text-4xl font-bold text-white">$0</h2>
+                        </div>
+                        <div class="glass-card rounded-xl p-6">
+                            <div class="mb-4 flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-300">TOTAL PENGELUARAN</span>
+                                <svg class="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M18 12H6" />
+                                </svg>
+                            </div>
+                            <h2 class="text-4xl font-bold text-white">$0</h2>
+                        </div>
+                        <div class="glass-card rounded-xl p-6">
+                            <div class="mb-4 flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-300">LABA BERSIH</span>
+                                <svg class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M3 6l3 6m0 0l3-6m-3 6v6m0-6H3m3 0h3m-3 6h3m0 0v6m0-6l3-6m-3 6l3 6" />
+                                </svg>
+                            </div>
+                            <h2 class="text-4xl font-bold text-white">$0</h2>
+                        </div>
+                    </div>
+
+                    <!-- Riwayat Transaksi -->
+                    <div class="glass-card rounded-xl p-6">
+                        <h3 class="mb-4 text-xl font-semibold text-white">Riwayat Transaksi</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-left text-sm">
+                                <thead>
+                                    <tr class="border-b border-white/10">
+                                        <th class="py-3 pr-4 font-semibold">Tanggal</th>
+                                        <th class="py-3 px-4 font-semibold">Deskripsi</th>
+                                        <th class="py-3 px-4 font-semibold">Tipe</th>
+                                        <th class="py-3 px-4 font-semibold">Jumlah</th>
+                                        <th class="py-3 pl-4 font-semibold">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="5" class="py-10 text-center text-gray-400">
+                                            Riwayat transaksi kosong untuk bulan ini.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 4: BOOKINGS -->
+                <section id="bookings" class="content-section hidden">
+                    <div class="glass-card rounded-xl p-6">
+                        <div class="mb-4 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+                            <h2 class="text-2xl font-bold text-white">Manajemen Bookings</h2>
+                            <button
+                                class="rounded-lg bg-pink-600 px-4 py-2 font-semibold text-white transition-all hover:bg-pink-700">
+                                Tambah Booking Baru
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-left text-sm">
+                                <thead>
+                                    <tr class="border-b border-white/10">
+                                        <th class="py-3 pr-4 font-semibold">Klien</th>
+                                        <th class="py-3 px-4 font-semibold">Tanggal</th>
+                                        <th class="py-3 px-4 font-semibold">Paket</th>
+                                        <th class="py-3 px-4 font-semibold">Status</th>
+                                        <th class="py-3 pl-4 font-semibold">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="5" class="py-10 text-center text-gray-400">
+                                            Belum ada janji pemotretan yang tercatat.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 5: INVOICES -->
+                <section id="invoices" class="content-section hidden">
+                    <div class="glass-card rounded-xl p-6">
+                        <div class="mb-4 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+                            <h2 class="text-2xl font-bold text-white">Manajemen Invoices</h2>
+                            <button
+                                class="rounded-lg bg-pink-600 px-4 py-2 font-semibold text-white transition-all hover:bg-pink-700">
+                                Buat Faktur Baru
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-left text-sm">
+                                <thead>
+                                    <tr class="border-b border-white/10">
+                                        <th class="py-3 pr-4 font-semibold">Nomor Invoice</th>
+                                        <th class="py-3 px-4 font-semibold">Klien</th>
+                                        <th class="py-3 px-4 font-semibold">Tanggal Dibuat</th>
+                                        <th class="py-3 px-4 font-semibold">Status</th>
+                                        <th class="py-3 px-4 font-semibold">Jumlah</th>
+                                        <th class="py-3 pl-4 font-semibold">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="6" class="py-10 text-center text-gray-400">
+                                            Belum ada faktur yang dibuat.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 6: CALENDAR -->
+                <section id="calendar" class="content-section hidden space-y-6">
+                    <div class="mb-4 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+                        <h2 class="text-2xl font-bold text-white">Calendar & Jadwal</h2>
+                        <button
+                            class="rounded-lg bg-pink-600 px-4 py-2 font-semibold text-white transition-all hover:bg-pink-700">
+                            Tambah Acara Baru
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                        <!-- Kalender Grid -->
+                        <div class="glass-card rounded-xl p-6 lg:col-span-2">
+                            <!-- Navigasi Bulan -->
+                            <div class="mb-4 flex items-center justify-between">
+                                <button id="prev-month-btn"
+                                    class="rounded-full p-2 text-gray-300 hover:bg-white/10 hover:text-white">
+                                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                </button>
+                                <h3 id="calendar-month-year" class="text-xl font-semibold text-white">
+                                    November 2025
+                                </h3>
+                                <button id="next-month-btn"
+                                    class="rounded-full p-2 text-gray-300 hover:bg-white/10 hover:text-white">
+                                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <!-- Header Hari (Min, Sen, ...) -->
+                            <div class="grid grid-cols-7 gap-2 text-center text-xs font-medium text-gray-400">
+                                <span>Min</span>
+                                <span>Sen</span>
+                                <span>Sel</span>
+                                <span>Rab</span>
+                                <span>Kam</span>
+                                <span>Jum</span>
+                                <span>Sab</span>
+                            </div>
+                            <!-- Grid Tanggal -->
+                            <div id="calendar-grid"
+                                class="mt-2 grid grid-cols-7 gap-1 text-center text-sm font-medium">
+                                <!-- Tanggal akan di-render oleh JavaScript di sini -->
+                            </div>
+                        </div>
+
+                        <!-- Daftar Acara Mendatang -->
+                        <div class="lg:col-span-1">
+                            <div class="glass-card rounded-xl p-6">
+                                <h3 class="mb-4 text-xl font-semibold text-white">Acara Mendatang</h3>
+                                <div class="space-y-4">
+                                    <!-- Acara 1 -->
+                                    <div class="rounded-lg bg-white/5 p-4">
+                                        <p class="font-semibold text-pink-300">16 Nov - Pernikahan Tanti & Andi</p>
+                                        <p class="text-sm text-gray-300">08:00 - Jakarta</p>
+                                    </div>
+                                    <!-- Acara 2 -->
+                                    <div class="rounded-lg bg-white/5 p-4">
+                                        <p class="font-semibold text-pink-300">25 Nov - Sesi Foto Keluarga Budi</p>
+                                        <p class="text-sm text-gray-300">14:00 - Studio</p>
+                                    </div>
+                                    <div class="text-center text-gray-400">
+                                        Tidak ada acara lain bulan ini.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 7: SETTINGS -->
+                <section id="settings" class="content-section hidden">
+                    <h2 class="mb-6 text-2xl font-bold text-white">Pengaturan</h2>
+                    <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+                        <!-- Navigasi Tab Pengaturan -->
+                        <div class="glass-card rounded-xl p-4 md:col-span-1">
+                            <nav class="space-y-1">
+                                <button data-tab="account-tab"
+                                    class="settings-tab-btn active-tab group flex w-full items-center rounded-lg bg-white/10 px-4 py-3 text-left font-medium text-white">
+                                    <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                    Akun
+                                </button>
+                                <button data-tab="branding-tab"
+                                    class="settings-tab-btn group flex w-full items-center rounded-lg px-4 py-3 text-left font-medium text-gray-300 hover:bg-white/10 hover:text-white">
+                                    <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.001l-2.387.477a2 2 0 00-1.022.547m3.232-4.162a4 4 0 015.064 0" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    Branding
+                                </button>
+                                <!-- Tombol Integrasi Dihapus -->
+                            </nav>
+                        </div>
+
+                        <!-- Konten Tab Pengaturan -->
+                        <div class="md:col-span-2">
+                            <!-- Tab Akun -->
+                            <div id="account-tab" class="settings-tab-content active glass-card rounded-xl p-6">
+                                <h3 class="mb-4 text-xl font-semibold text-white">Pengaturan Akun</h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300">Email</label>
+                                        <input id="settings-email" type="email"
+                                            class="mt-1 w-full rounded-lg border-none bg-white/10 px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                                            readonly>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300">Ganti Password</label>
+                                        <input type="password" placeholder="Password Baru"
+                                            class="mt-1 w-full rounded-lg border-none bg-white/10 px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500">
+                                    </div>
+                                    <button
+                                        class="rounded-lg bg-pink-600 px-5 py-2 font-semibold text-white transition-all hover:bg-pink-700">
+                                        Simpan Perubahan
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Tab Branding -->
+                            <div id="branding-tab" class="settings-tab-content hidden glass-card rounded-xl p-6">
+                                <h3 class="mb-4 text-xl font-semibold text-white">Branding Bisnis</h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300">Nama Bisnis</label>
+                                        <input type="text" value="ShutterPro"
+                                            class="mt-1 w-full rounded-lg border-none bg-white/10 px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300">Slogan (Opsional)</label>
+                                        <input type="text" placeholder="Cth: Abadikan Momen Anda"
+                                            class="mt-1 w-full rounded-lg border-none bg-white/10 px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300">Logo Bisnis</label>
+                                        <div class="mt-1 flex items-center space-x-4">
+                                            <img id="logo-preview"
+                                                src="https://placehold.co/64x64/f871b0/white?text=SP"
+                                                class="h-16 w-16 rounded-lg object-cover bg-white/10">
+                                            
+                                            <input type="file" id="logo-upload-input" class="hidden" accept="image/*">
+                                            <button id="logo-upload-btn"
+                                                class="rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-white/20">Ubah
+                                                Logo</button>
+                                        </div>
+                                        <p id="logo-upload-status" class="mt-2 text-sm text-gray-400"></p>
+                                    </div>
+                                    <button
+                                        class="rounded-lg bg-pink-600 px-5 py-2 font-semibold text-white transition-all hover:bg-pink-700">
+                                        Simpan Perubahan
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ======================= AKHIR KONTEN SECTION ======================= -->
+
+
+                <!-- Panel Notifikasi (Tersembunyi) -->
+                <div id="notification-panel"
+                    class="glass-card slide-in-top fixed top-20 right-4 z-40 w-full max-w-sm rounded-2xl p-6 hidden">
+                    <div class="mb-4 flex items-center justify-between">
+                        <h3 class="text-xl font-semibold text-white">Notifikasi</h3>
+                        <button id="close-notification-panel" class="text-gray-400 hover:text-white">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="space-y-4">
+                        <!-- Contoh Notifikasi 1 -->
+                        <div class="flex items-start space-x-3 rounded-lg bg-white/5 p-3">
+                            <div class="mt-1 rounded-full bg-pink-600 p-2">
+                                <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-medium text-white">Klien Baru Ditambahkan</p>
+                                <p class="text-sm text-gray-300">Anya Forger baru saja ditambahkan ke daftar klien Anda.</p>
+                                <span class="text-xs text-gray-400">5 menit lalu</span>
+                            </div>
+                        </div>
+                        <div class="text-center text-gray-400">
+                            Tidak ada notifikasi baru.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <!-- Akhir .main-container -->
+        </main>
+    </div>
+
+    <!-- Notifikasi Toast (Tersembunyi) -->
+    <div id="notification-toast"
+        class="glass-card fade-in fixed top-5 right-5 z-50 hidden max-w-sm rounded-xl p-4">
+        <div class="flex items-start space-x-3">
+            <div id="toast-icon" class="flex-shrink-0 rounded-full bg-green-500 p-2">
+                <!-- Ikon Check (Sukses) -->
+                <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                    stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+            <div>
+                <p id="toast-title" class="font-semibold text-white">Sukses!</p>
+                <p id="toast-message" class="text-sm text-gray-200">Klien berhasil ditambahkan.</p>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal Login/Sign-Up (Muncul Saat Awal) -->
+    <div id="auth-modal"
+        class="main-container fixed inset-0 z-50 flex min-h-screen items-center justify-center p-4">
+        <div class="glass-card w-full max-w-md rounded-2xl p-8">
+            <div class="mb-6 text-center">
+                <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-pink-600 p-2">
+                    <!-- Ikon Shutter/Kamera (SVG) -->
+                    <svg id="shutter-icon-auth" width="40" height="40" viewBox="0 0 24 24" fill="none"
+                        xmlns="http://www.w3.org/2000/svg" class="text-white" fill="currentColor">
+                        <!-- Path data sama dengan ikon di sidebar -->
+                        <path
+                            d="M23.5 11H20.5C20.2239 11 20 11.2239 20 11.5V12.5C20 12.7761 20.2239 13 20.5 13H23.5C23.7761 13 24 12.7761 24 12.5V11.5C24 11.2239 23.7761 11 23.5 11Z"
+                            fill="currentColor" />
+                        <path
+                            d="M18.5 11C18.2239 11 18 11.2239 18 11.5V12.5C18 12.7761 18.2239 13 18.5 13H19.5C19.7761 13 20 12.7761 20 12.5V11.5C20 11.2239 19.7761 11 19.5 11H18.5Z"
+                            fill="currentColor" />
+                        <path
+                            d="M12 2C6.477 2 2 6.477 2 12C2 17.523 6.477 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2ZM12 20C7.589 20 4 16.411 4 12C4 7.589 7.589 4 12 4C16.411 4 20 7.589 20 12C20 16.411 16.411 20 12 20Z"
+                            fill="currentColor" />
+                        <path
+                            d="M12 7C9.23858 7 7 9.23858 7 12C7 14.7614 9.23858 17 12 17C14.7614 17 17 14.7614 17 12C17 9.23858 14.7614 7 12 7ZM12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12C15 13.6569 13.6569 15 12 15Z"
+                            fill="currentColor" />
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold text-white">Selamat Datang</h2>
+                <p class="text-gray-300">Login atau Daftar untuk mengelola klien Anda.</p>
+            </div>
+
+            <!-- Pesan Error Auth -->
+            <div id="auth-error" class="mb-4 hidden rounded-lg bg-red-500/30 p-3 text-center text-red-300"></div>
+
+            <div class="space-y-4">
+                <input id="auth-email" type="email"
+                    class="w-full rounded-lg border-none bg-white/10 px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    placeholder="Email">
+                <input id="auth-password" type="password"
+                    class="w-full rounded-lg border-none bg-white/10 px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    placeholder="Password">
+                <button id="login-btn"
+                    class="w-full rounded-lg bg-pink-600 px-5 py-3 font-semibold text-white transition-all hover:bg-pink-700">
+                    Login
+                </button>
+                <button id="signup-btn"
+                    class="w-full rounded-lg bg-white/10 px-5 py-3 font-semibold text-gray-300 transition-all hover:bg-white/20 hover:text-white">
+                    Daftar Akun Baru
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal "Tambah Klien Baru" (Tersembunyi) -->
+    <div id="add-client-modal" class="fade-in fixed inset-0 z-40 hidden items-center justify-center p-4">
+        <!-- Overlay Modal -->
+        <div id="client-modal-overlay" class="fixed inset-0 bg-black/50"></div>
+
+        <!-- Konten Modal -->
+        <div class="glass-card relative z-50 w-full max-w-lg rounded-2xl p-6">
+            <h3 class="mb-4 text-2xl font-semibold text-white">Tambah Klien Baru</h3>
+            <form id="add-client-form" class="space-y-4">
+                <div>
+                    <label for="client-name" class="block text-sm font-medium text-gray-300">Nama Lengkap</label>
+                    <input type="text" id="client-name"
+                        class="mt-1 w-full rounded-lg border-none bg-white/10 px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        required>
+                </div>
+                <div>
+                    <label for="client-email" class="block text-sm font-medium text-gray-300">Email</label>
+                    <input type="email" id="client-email"
+                        class="mt-1 w-full rounded-lg border-none bg-white/10 px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500">
+                </div>
+                <div>
+                    <label for="client-phone" class="block text-sm font-medium text-gray-300">Telepon</label>
+                    <input type="tel" id="client-phone"
+                        class="mt-1 w-full rounded-lg border-none bg-white/10 px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500">
+                </div>
+                <div>
+                    <label for="client-address" class="block text-sm font-medium text-gray-300">Alamat</label>
+                    <input type="text" id="client-address"
+                        class="mt-1 w-full rounded-lg border-none bg-white/10 px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500">
+                </div>
+            </form>
+
+            <!-- Tombol Aksi Modal -->
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="close-client-modal-btn"
+                    class="rounded-lg bg-white/10 px-5 py-2 font-semibold text-white transition-all hover:bg-white/20">
+                    Batal
+                </button>
+                <button id="save-client-btn"
+                    class="rounded-lg bg-pink-600 px-5 py-2 font-semibold text-white transition-all hover:bg-pink-700">
+                    Simpan Klien
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ======================= SUPABASE & JAVASCRIPT ======================= -->
+    <script type="module">
+        // Inisialisasi Supabase
+        const supabaseUrl = "https://ifocodixtmoyxmckxerj.supabase.co";
+        const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlmb2NvZGl4dG1veXhtY2t4ZXJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxNzY2ODMsImV4cCI6MjA3ODc1MjY4M30.SVCvDGLUG-i3mgAzPj8cvH7Jpi-r-Kdqq87MU-fuJxo";
+        
+        // PERBAIKAN: Ganti nama 'supabase' lokal menjadi 'supabaseClient'
+        // untuk menghindari konflik dengan 'supabase' global dari CDN
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Variabel global aplikasi
+        let userId = null; // Ini akan menjadi UUID dari auth.users()
+        let authReady = false; 
+
+        // ======================= FUNGSI NOTIFIKASI TOAST =======================
+        const toast = document.getElementById('notification-toast');
+        const toastTitle = document.getElementById('toast-title');
+        const toastMessage = document.getElementById('toast-message');
+        const toastIcon = document.getElementById('toast-icon');
+
+        function showToast(title, message, isError = false) {
+            toastTitle.textContent = title;
+            toastMessage.textContent = message;
+
+            // Reset ikon
+            toastIcon.innerHTML = '';
+            toastIcon.classList.remove('bg-green-500', 'bg-red-500');
+
+            if (isError) {
+                toastIcon.classList.add('bg-red-500');
+                // Ikon X (Error)
+                toastIcon.innerHTML = `<svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                       </svg>`;
+            } else {
+                toastIcon.classList.add('bg-green-500');
+                // Ikon Check (Sukses)
+                toastIcon.innerHTML = `<svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                       </svg>`;
+            }
+
+            toast.classList.remove('hidden', 'fade-out');
+            toast.classList.add('fade-in');
+
+            setTimeout(() => {
+                toast.classList.remove('fade-in');
+                toast.classList.add('fade-out');
+                setTimeout(() => toast.classList.add('hidden'), 300); // Sembunyikan setelah animasi fade-out
+            }, 3000); // Notifikasi hilang setelah 3 detik
+        }
+
+
+        // ======================= FUNGSI AUTENTIKASI (SUPABASE) =======================
+
+        const authModal = document.getElementById('auth-modal');
+        const appContainer = document.getElementById('app-container');
+        const loginBtn = document.getElementById('login-btn');
+        const signupBtn = document.getElementById('signup-btn');
+        const signOutBtn = document.getElementById('sign-out-btn');
+        const authEmailInput = document.getElementById('auth-email');
+        const authPasswordInput = document.getElementById('auth-password');
+        const authError = document.getElementById('auth-error');
+
+        // Fungsi untuk menampilkan error auth
+        function showAuthError(message) {
+            authError.textContent = message;
+            authError.classList.remove('hidden');
+        }
+
+        // Handle Login
+        loginBtn.addEventListener('click', async () => {
+            const email = authEmailInput.value;
+            const password = authPasswordInput.value;
+            // PERBAIKAN: Gunakan supabaseClient
+            const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+            if (error) {
+                console.error("Login Error:", error);
+                showAuthError("Email atau password salah.");
+            }
+            // Status login akan ditangani oleh onAuthStateChange
+        });
+
+        // Handle Sign Up
+        signupBtn.addEventListener('click', async () => {
+            const email = authEmailInput.value;
+            const password = authPasswordInput.value;
+            
+            if (password.length < 6) {
+                showAuthError("Password harus minimal 6 karakter.");
+                return;
+            }
+
+            // PERBAIKAN: Gunakan supabaseClient
+            const { error } = await supabaseClient.auth.signUp({ email, password });
+            
+            if (error) {
+                console.error("Sign Up Error:", error);
+                showAuthError(error.message);
+            } else {
+                showAuthError("Silakan cek email Anda untuk verifikasi.");
+                showToast("Sukses!", "Silakan cek email Anda untuk verifikasi.");
+            }
+        });
+
+        // Handle Sign Out
+        signOutBtn.addEventListener('click', async () => {
+            // PERBAIKAN: Gunakan supabaseClient
+            const { error } = await supabaseClient.auth.signOut();
+            if (error) {
+                console.error("Sign Out Error:", error);
+                showToast("Error", "Gagal sign out.", true);
+            }
+            // Status logout akan ditangani oleh onAuthStateChange
+        });
+
+        // Listener Status Auth (Utama)
+        // PERBAIKAN: Gunakan supabaseClient
+        supabaseClient.auth.onAuthStateChange((event, session) => {
+            if (session && session.user) {
+                // Pengguna Login
+                userId = session.user.id; // Simpan userId (UUID) secara global
+                authReady = true;
+
+                // Tampilkan UI Aplikasi
+                authModal.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+
+                // Update UI Info Pengguna
+                const userEmail = session.user.email;
+                document.getElementById('user-email').textContent = userEmail || 'User';
+                document.getElementById('settings-email').value = userEmail || '';
+                const userInitial = (userEmail || 'P').charAt(0).toUpperCase();
+                document.getElementById('user-avatar').src = `https://placehold.co/40x40/f871b0/white?text=${userInitial}`;
+
+                // Mulai mengambil data setelah auth siap
+                fetchClients();
+
+            } else {
+                // Pengguna Logout / Belum Login
+                authReady = false;
+                userId = null;
+                // Tampilkan Modal Login
+                authModal.classList.remove('hidden');
+                appContainer.classList.add('hidden');
+            }
+        });
+
+        // ======================= FUNGSI NAVIGASI APLIKASI =======================
+        // (Kode ini tetap sama, tidak perlu diubah)
+        const navLinks = document.querySelectorAll('.nav-link');
+        const contentSections = document.querySelectorAll('.content-section');
+        const pageTitle = document.getElementById('page-title');
+
+        function navigateToSection(sectionId) {
+            contentSections.forEach(section => {
+                section.classList.remove('active');
+                section.classList.add('hidden');
+            });
+            const activeSection = document.getElementById(sectionId);
+            if (activeSection) {
+                activeSection.classList.add('active');
+                activeSection.classList.remove('hidden');
+            }
+            navLinks.forEach(link => {
+                link.classList.remove('sidebar-active');
+                if (link.dataset.section === sectionId) {
+                    link.classList.add('sidebar-active');
+                    pageTitle.textContent = link.textContent.trim();
+                }
+            });
+            toggleSidebar(false);
+        }
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const sectionId = e.currentTarget.dataset.section;
+                navigateToSection(sectionId);
+            });
+        });
+
+        // ======================= FUNGSI NAVIGASI SETTINGS (TAB) =======================
+        // (Kode ini tetap sama)
+        const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
+        const settingsTabContents = document.querySelectorAll('.settings-tab-content');
+
+        settingsTabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabId = btn.dataset.tab;
+                settingsTabBtns.forEach(b => {
+                    b.classList.remove('active-tab', 'bg-white/10', 'text-white');
+                    b.classList.add('text-gray-300', 'hover:bg-white/10', 'hover:text-white');
+                });
+                btn.classList.add('active-tab', 'bg-white/10', 'text-white');
+                btn.classList.remove('text-gray-300');
+                settingsTabContents.forEach(content => {
+                    if (content.id === tabId) {
+                        content.classList.remove('hidden');
+                    } else {
+                        content.classList.add('hidden');
+                    }
+                });
+            });
+        });
+
+        // ======================= FUNGSI NAVIGASI MOBILE (SIDEBAR) =======================
+        // (Kode ini tetap sama)
+        const menuBtn = document.getElementById('menu-btn');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+        function toggleSidebar(show) {
+            if (show) {
+                sidebar.classList.remove('-translate-x-full');
+                sidebarOverlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+            }
+        }
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleSidebar(true);
+        });
+        sidebarOverlay.addEventListener('click', () => {
+            toggleSidebar(false);
+        });
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const swipeThreshold = 50;
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+        function handleSwipe() {
+            const distance = touchEndX - touchStartX;
+            const isSidebarOpen = !sidebar.classList.contains('-translate-x-full');
+            if (isSidebarOpen && distance < -swipeThreshold) {
+                toggleSidebar(false);
+            } else if (!isSidebarOpen && distance > swipeThreshold && touchStartX < 50) {
+                toggleSidebar(true);
+            }
+        }
+
+        // ======================= FUNGSI PANEL NOTIFIKASI =======================
+        // (Kode ini tetap sama)
+        const notificationBtn = document.getElementById('notification-btn');
+        const notificationPanel = document.getElementById('notification-panel');
+        const closeNotificationPanel = document.getElementById('close-notification-panel');
+        notificationBtn.addEventListener('click', () => {
+            const isHidden = notificationPanel.classList.contains('hidden');
+            if (isHidden) {
+                notificationPanel.classList.remove('hidden', 'slide-out-top');
+                notificationPanel.classList.add('slide-in-top');
+            } else {
+                notificationPanel.classList.remove('slide-in-top');
+                notificationPanel.classList.add('slide-out-top');
+                setTimeout(() => notificationPanel.classList.add('hidden'), 500);
+            }
+        });
+        closeNotificationPanel.addEventListener('click', () => {
+            notificationPanel.classList.remove('slide-in-top');
+            notificationPanel.classList.add('slide-out-top');
+            setTimeout(() => notificationPanel.classList.add('hidden'), 500);
+        });
+
+        // ======================= FUNGSI CRUD KLIEN (SUPABASE) =======================
+
+        const clientsTableBody = document.getElementById('clients-table-body');
+        const clientsEmptyState = document.getElementById('clients-empty-state');
+        const statTotalClients = document.getElementById('stat-total-clients');
+
+        // Fungsi 1: Ambil Klien (Read)
+        // CATATAN: Ini tidak real-time seperti Firebase onSnapshot. 
+        // Kita perlu memanggilnya ulang atau menggunakan Supabase Realtime (langkah selanjutnya).
+        async function fetchClients() {
+            if (!authReady || !userId) {
+                console.warn("Auth belum siap, fetchClients() dibatalkan.");
+                return;
+            }
+
+            // Ambil data dari tabel 'clients'
+            // RLS (Row Level Security) di Supabase akan otomatis memfilter
+            // data jika sudah Anda setup.
+            // PERBAIKAN: Gunakan supabaseClient
+            const { data: clients, error } = await supabaseClient
+                .from('clients')
+                .select('*');
+
+            if (error) {
+                console.error("Error fetching clients:", error);
+                clientsTableBody.innerHTML = '';
+                clientsTableBody.appendChild(clientsEmptyState);
+                clientsEmptyState.querySelector('td').textContent = "Gagal memuat data. (Cek RLS di Supabase)";
+                showToast("Error", "Gagal memuat data klien: " + error.message, true);
+                return;
+            }
+
+            // Bersihkan tabel
+            clientsTableBody.innerHTML = '';
+            
+            // Update Statistik Dashboard
+            statTotalClients.textContent = clients.length;
+
+            if (clients.length === 0) {
+                clientsTableBody.appendChild(clientsEmptyState); // Tampilkan status kosong
+            } else {
+                clients.forEach((client) => {
+                    const clientRow = document.createElement('tr');
+                    clientRow.className = "border-b border-white/5";
+                    // Gunakan 'id' (UUID) dari Supabase sebagai data-id
+                    clientRow.innerHTML = `
+                        <td class="py-4 pr-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="h-10 w-10 rounded-full bg-pink-500/30 flex items-center justify-center font-bold text-pink-300">
+                                    ${(client.name || 'N').charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <p class="font-medium text-white">${client.name || 'N/A'}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-4">${client.email || 'N/A'}</td>
+                        <td class="py-4 px-4">${client.phone || 'N/A'}</td>
+                        <td class="py-4 pl-4">
+                            <button class="text-red-400 hover:text-red-300" data-id="${client.id}">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </td>
+                    `;
+                    clientsTableBody.appendChild(clientRow);
+
+                    // Tambahkan event listener untuk tombol hapus
+                    clientRow.querySelector('button[data-id]').addEventListener('click', (e) => {
+                        const clientId = e.currentTarget.dataset.id;
+                        if (confirm('Apakah Anda yakin ingin menghapus klien ini?')) {
+                            deleteClient(clientId);
+                        }
+                    });
+                });
+            }
+        }
+
+        // Fungsi 2: Hapus Klien (Delete)
+        async function deleteClient(clientId) {
+            if (!userId) return;
+            
+            // PERBAIKAN: Gunakan supabaseClient
+            const { error } = await supabaseClient
+                .from('clients')
+                .delete()
+                .eq('id', clientId); // Hapus berdasarkan 'id' (UUID)
+
+            if (error) {
+                console.error("Error deleting client:", error);
+                showToast("Error", "Gagal menghapus klien: " + error.message, true);
+            } else {
+                showToast("Sukses!", "Klien telah dihapus.");
+                fetchClients(); // Ambil ulang data setelah menghapus
+            }
+        }
+
+        // Fungsi 3: Tambah Klien (Create)
+        const addClientModal = document.getElementById('add-client-modal');
+        const addClientBtn = document.getElementById('add-client-btn');
+        const closeClientModalBtn = document.getElementById('close-client-modal-btn');
+        const clientModalOverlay = document.getElementById('client-modal-overlay');
+        const saveClientBtn = document.getElementById('save-client-btn');
+        const addClientForm = document.getElementById('add-client-form');
+
+        // Buka Modal
+        addClientBtn.addEventListener('click', () => {
+            addClientModal.classList.remove('hidden');
+            addClientModal.classList.add('flex');
+        });
+
+        // Tutup Modal
+        function closeClientModal() {
+            addClientModal.classList.remove('flex');
+            addClientModal.classList.add('hidden');
+            addClientForm.reset(); // Reset form saat ditutup
+        }
+        closeClientModalBtn.addEventListener('click', closeClientModal);
+        clientModalOverlay.addEventListener('click', closeClientModal);
+
+        // Simpan Klien
+        saveClientBtn.addEventListener('click', async () => {
+            const name = document.getElementById('client-name').value;
+            const email = document.getElementById('client-email').value;
+            const phone = document.getElementById('client-phone').value;
+            const address = document.getElementById('client-address').value; // Ambil address
+
+            if (!name) { // Validasi sederhana
+                showToast("Input Error", "Nama klien wajib diisi.", true);
+                return;
+            }
+
+            if (!userId) {
+                showToast("Auth Error", "Anda harus login untuk menambah klien.", true);
+                return;
+            }
+
+            // Siapkan data untuk dikirim
+            // PENTING: Anda HARUS menambahkan kolom 'user_id' di tabel Supabase
+            // Lihat file 'supabase_setup.md'
+            const newClient = {
+                name: name,
+                email: email,
+                phone: phone,
+                address: address,
+                user_id: userId // WAJIB untuk RLS
+            };
+
+            // PERBAIKAN: Gunakan supabaseClient
+            const { error } = await supabaseClient
+                .from('clients')
+                .insert(newClient);
+
+            if (error) {
+                console.error("Error adding client: ", error);
+                showToast("Supabase Error", "Gagal menyimpan klien: " + error.message, true);
+            } else {
+                closeClientModal();
+                showToast("Sukses!", "Klien baru berhasil ditambahkan.");
+                fetchClients(); // Ambil ulang data setelah menambah
+            }
+        });
+
+        // ======================= FUNGSI SUPABASE STORAGE (Upload Logo) =======================
+        // (Logika Firebase Storage dihapus. Ini adalah implementasi Supabase Storage)
+
+        const logoUploadBtn = document.getElementById('logo-upload-btn');
+        const logoUploadInput = document.getElementById('logo-upload-input');
+        const logoPreview = document.getElementById('logo-preview');
+        const logoUploadStatus = document.getElementById('logo-upload-status');
+
+        logoUploadBtn.addEventListener('click', () => {
+            logoUploadInput.click(); // Klik input file yang tersembunyi
+        });
+
+        logoUploadInput.addEventListener('change', async (e) => {
+            if (!authReady || !userId) {
+                showToast("Error", "Harus login untuk upload file", true);
+                return;
+            }
+            
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const fileExt = file.name.split('.').pop();
+            const fileName = `logo_${Date.now()}.${fileExt}`;
+            const filePath = `${userId}/${fileName}`; // Simpan di folder unik user
+
+            logoUploadStatus.textContent = 'Mengupload...';
+
+            // 'business_assets' adalah nama BUCKET di Supabase Storage
+            // Anda harus membuat bucket ini secara manual di dashboard Supabase
+            // PERBAIKAN: Gunakan supabaseClient
+            const { data, error } = await supabaseClient.storage
+                .from('business_assets') // NAMA BUCKET
+                .upload(filePath, file);
+
+            if (error) {
+                console.error('Error uploading logo:', error);
+                logoUploadStatus.textContent = 'Upload Gagal.';
+                showToast("Storage Error", "Upload gagal: " + error.message, true);
+            } else {
+                logoUploadStatus.textContent = 'Upload Sukses!';
+                
+                // Dapatkan URL publik untuk file yang baru di-upload
+                // Ini HANYA berfungsi jika RLS Storage diatur dengan benar
+                // PERBAIKAN: Gunakan supabaseClient
+                const { data: urlData } = supabaseClient.storage
+                    .from('business_assets')
+                    .getPublicUrl(filePath);
+
+                if (urlData) {
+                    logoPreview.src = urlData.publicUrl;
+                    // Anda mungkin ingin menyimpan URL ini di database (mis: tabel 'profiles')
+                    showToast("Sukses!", "Logo berhasil di-upload.");
+                }
+            }
+        });
+
+
+        // ======================= FUNGSI KALENDER DINAMIS =======================
+        // (Kode ini tetap sama)
+        const calendarGrid = document.getElementById('calendar-grid');
+        const monthYearTitle = document.getElementById('calendar-month-year');
+        const prevMonthBtn = document.getElementById('prev-month-btn');
+        const nextMonthBtn = document.getElementById('next-month-btn');
+        let currentDate = new Date(2025, 10, 16); 
+
+        function renderCalendar(year, month) {
+            calendarGrid.innerHTML = ''; 
+            currentDate = new Date(year, month, 1);
+            const today = new Date(2025, 10, 16); 
+            monthYearTitle.textContent = currentDate.toLocaleString('id-ID', {
+                month: 'long',
+                year: 'numeric'
+            });
+            const firstDayOfMonth = currentDate.getDay(); 
+            const daysInMonth = new Date(year, month + 1, 0).getDate(); 
+            for (let i = 0; i < firstDayOfMonth; i++) {
+                calendarGrid.innerHTML += `<span class="calendar-day p-2 text-gray-600"></span>`;
+            }
+            for (let day = 1; day <= daysInMonth; day++) {
+                let dayClass = "calendar-day p-2 rounded-lg cursor-pointer hover:bg-white/10";
+                if (year === today.getFullYear() && month === today.getMonth() && day === today.getDate()) {
+                    dayClass += " today"; 
+                }
+                calendarGrid.innerHTML += `<span class="${dayClass}">${day}</span>`;
+            }
+        }
+        function changeMonth(delta) {
+            currentDate.setMonth(currentDate.getMonth() + delta);
+            renderCalendar(currentDate.getFullYear(), currentDate.getMonth());
+        }
+        prevMonthBtn.addEventListener('click', () => changeMonth(-1));
+        nextMonthBtn.addEventListener('click', () => changeMonth(1));
+        document.addEventListener('DOMContentLoaded', () => {
+            renderCalendar(currentDate.getFullYear(), currentDate.getMonth());
+        });
+
+    </script>
+</body>
+
+</html>
