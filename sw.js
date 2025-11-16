@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shutterpro-v1';
+const CACHE_NAME = 'Pencatatan costumer';
 // Daftar file inti yang diperlukan agar aplikasi bisa berjalan offline.
 const URLS_TO_CACHE = [
     './', // Ini adalah file index.html itu sendiri
