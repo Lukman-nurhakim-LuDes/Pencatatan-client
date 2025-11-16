@@ -8,12 +8,12 @@
   "theme_color": "#1e2a78",
   "icons": [
     {
-      "src": "GANTI_INI_DENGAN_URL_PUBLIK_SUPABASE_ANDA/icon-192.png",
+      "src": "https://ifocodixtmoyxmckxerj.supabase.co/storage/v1/object/public/public_assets/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "GANTI_INI_DENGAN_URL_PUBLIK_SUPABASE_ANDA/icon-512.png",
+      "src": "https://ifocodixtmoyxmckxerj.supabase.co/storage/v1/object/public/public_assets/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
