@@ -10,14 +10,14 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1e2a78">
     
-    <!-- Memuat Tailwind CSS -->
+    <!-- Memuat Tailwind CSS - PERBAIKAN URL -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Memuat Font Inter -->
+    <!-- Memuat Font Inter - PERBAIKAN URL -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- MEMUAT SUPABASE V2 -->
+    <!-- MEMUAT SUPABASE V2 - PERBAIKAN URL -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <!-- Konfigurasi Kustom Tailwind (jika diperlukan) -->
@@ -52,6 +52,17 @@
             -webkit-backdrop-filter: blur(15px);
             border-radius: 1.25rem;
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        /* Card untuk Packages agar lebih kontras */
+        .package-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+        }
+        .package-card:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
 
         /* Sidebar Aktif */
@@ -348,7 +359,7 @@
 
                 <!-- ======================= KONTEN SECTION ======================= -->
 
-                <!-- SECTION 1: DASHBOARD (DIUBAH TOTAL SESUAI PERMINTAAN) -->
+                <!-- SECTION 1: DASHBOARD -->
                 <section id="dashboard" class="content-section active space-y-6">
                     <!-- Header Sambutan -->
                     <div class="glass-card rounded-xl p-6 mb-8">
@@ -455,7 +466,7 @@
                     </div>
                 </section>
 
-                <!-- SECTION 2: PACKAGES (MENGGANTIKAN CLIENTS) -->
+                <!-- SECTION 2: PACKAGES (MENGGANTIKAN CLIENTS) - DIUBAH MENJADI CARD GRID -->
                 <section id="packages" class="content-section hidden">
                     <div class="glass-card rounded-xl p-6">
                         <div class="mb-4 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
@@ -465,26 +476,12 @@
                                 Tambah Paket Baru
                             </button>
                         </div>
-
-                        <!-- Tabel Paket -->
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full text-left text-sm">
-                                <thead>
-                                    <tr class="border-b border-white/10">
-                                        <th class="py-3 pr-4 font-semibold">Nama Paket</th>
-                                        <th class="py-3 px-4 font-semibold">Harga (IDR)</th>
-                                        <th class="py-3 px-4 font-semibold">Deskripsi Singkat</th>
-                                        <th class="py-3 pl-4 font-semibold">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="packages-table-body">
-                                    <tr id="packages-loading-state">
-                                        <td colspan="4" class="py-10 text-center text-gray-400">
-                                            Memuat data paket...
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <!-- Grid Card untuk Packages -->
+                        <div id="packages-grid" class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                            <div id="packages-loading-state-card" class="lg:col-span-3 text-center py-10 text-gray-400">
+                                Memuat data paket...
+                            </div>
+                            <!-- Card Paket akan di-render oleh JavaScript di sini -->
                         </div>
                     </div>
                 </section>
@@ -731,7 +728,7 @@
                                 <h3 class="mb-4 text-xl font-semibold text-white">Branding Bisnis</h3>
                                 <div class="space-y-4">
                                     <div><label class="block text-sm font-medium text-gray-300">Nama Bisnis</label><input
-                                            type="text" value="ShutterPro" class="mt-1 w-full rounded-lg border-none bg-white/10 px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500">
+                                            id="business-name-input" type="text" value="ShutterPro" class="mt-1 w-full rounded-lg border-none bg-white/10 px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500">
                                     </div>
                                     <div><label class="block text-sm font-medium text-gray-300">Slogan (Opsional)</label><input
                                             type="text" placeholder="Cth: Abadikan Momen Anda" class="mt-1 w-full rounded-lg border-none bg-white/10 px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500">
@@ -742,8 +739,8 @@
                                             <input type="file" id="logo-upload-input" class="hidden" accept="image/*">
                                             <button id="logo-upload-btn" class="rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-white/20">Ubah Logo</button>
                                         </div>
-                                        <p id="logo-upload-status" class="mt-2 text-sm text-gray-400"></p>
-                                    </div><button class="rounded-lg bg-pink-600 px-5 py-2 font-semibold text-white transition-all hover:bg-pink-700">Simpan Perubahan</button>
+                                        <p id="logo-upload-status" class="mt-2 text-sm text-gray-400">Status: Default</p>
+                                    </div><button id="save-branding-btn" class="rounded-lg bg-pink-600 px-5 py-2 font-semibold text-white transition-all hover:bg-pink-700">Simpan Perubahan</button>
                                 </div>
                             </div>
                         </div>
@@ -856,7 +853,7 @@
                         min="0" required>
                 </div>
                 <div>
-                    <label for="package-description" class="block text-sm font-medium text-gray-300">Deskripsi Singkat</label>
+                    <label for="package-description" class="block text-sm font-medium text-gray-300">Deskripsi Singkat (Cth: Durasi, Jumlah Foto)</label>
                     <textarea id="package-description" rows="3"
                         class="mt-1 w-full rounded-lg border-none bg-white/10 px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
                         required></textarea>
@@ -969,11 +966,14 @@
         // ======================= FUNGSI UTILITAS =======================
 
         function formatRupiah(number) {
+            const num = Number(number);
+            if (isNaN(num)) return 'Rp 0';
+
             return new Intl.NumberFormat('id-ID', {
                 style: 'currency',
                 currency: 'IDR',
                 minimumFractionDigits: 0
-            }).format(number);
+            }).format(num);
         }
 
         function getPaymentStatusColor(status) {
@@ -1047,13 +1047,12 @@
                     link.classList.add('sidebar-active');
                     pageTitle.textContent = link.textContent.trim();
                     // Load data spesifik untuk section
-                    if (sectionId === 'packages') renderPackagesTable();
+                    if (sectionId === 'packages') renderPackagesTable(); // Panggil renderPackagesTable
                     if (sectionId === 'bookings') fetchBookings();
                     if (sectionId === 'invoices') fetchInvoices();
                     if (sectionId === 'dashboard') fetchDashboardStats();
                 }
             });
-            // Logika sidebar mobile (dihilangkan untuk fokus pada fungsi inti)
         }
         navLinks.forEach(link => {
             link.addEventListener('click', (e) => {
@@ -1061,6 +1060,48 @@
                 navigateToSection(e.currentTarget.dataset.section);
             });
         });
+
+        // Handle Sign Out
+        signOutBtn.addEventListener('click', async () => {
+            const { error } = await supabaseClient.auth.signOut();
+            if (error) {
+                console.error("Sign Out Error:", error);
+                showToast("Error", "Gagal sign out.", true);
+            }
+        });
+        
+        // --- LOGIKA BRANDING DAN AVATAR ---
+        const logoPreview = document.getElementById('logo-preview');
+        const logoUploadInput = document.getElementById('logo-upload-input');
+        const logoUploadStatus = document.getElementById('logo-upload-status');
+        const businessNameInput = document.getElementById('business-name-input');
+        
+        // Fungsi untuk mengambil URL Logo dari Storage
+        async function fetchLogoUrl() {
+            if (!userId) return;
+            // Ambil URL default (kita asumsikan logo disimpan di bawah folder userId/logo.png)
+            const filePath = `${userId}/logo_business.png`; 
+
+            // Supabase getPublicUrl tidak memerlukan autentikasi setelah RLS diatur
+            const { data } = supabaseClient.storage
+                .from('business_assets')
+                .getPublicUrl(filePath);
+            
+            if (data && data.publicUrl) {
+                // Coba muat URL logo
+                const img = new Image();
+                img.onload = () => {
+                    logoPreview.src = data.publicUrl;
+                    logoUploadStatus.textContent = 'Status: Logo Kustom Aktif';
+                };
+                img.onerror = () => {
+                    logoPreview.src = "https://placehold.co/64x64/f871b0/white?text=SP";
+                    logoUploadStatus.textContent = 'Status: Logo Default';
+                };
+                img.src = data.publicUrl;
+
+            }
+        }
 
         // Listener Status Auth (Utama)
         supabaseClient.auth.onAuthStateChange((event, session) => {
@@ -1077,8 +1118,9 @@
                 document.getElementById('user-avatar').src = `https://placehold.co/40x40/f871b0/white?text=${userInitial}`;
 
                 // Fetch data awal saat login
-                fetchPackages(); // Wajib dipanggil pertama untuk mengisi dropdown booking
+                fetchPackages();
                 fetchDashboardStats();
+                fetchLogoUrl(); // Panggil fetchLogoUrl setelah login
                 navigateToSection('dashboard'); 
             } else {
                 authReady = false;
@@ -1088,67 +1130,96 @@
             }
         });
 
+        // Handle Upload Logo
+        document.getElementById('logo-upload-btn').addEventListener('click', () => {
+            logoUploadInput.click();
+        });
+
+        logoUploadInput.addEventListener('change', async (e) => {
+            if (!authReady || !userId) {
+                showToast("Error", "Harus login untuk upload file", true);
+                return;
+            }
+            
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const filePath = `${userId}/logo_business.png`; // Selalu timpa file dengan nama ini
+            logoUploadStatus.textContent = 'Mengupload...';
+
+            const { data, error } = await supabaseClient.storage
+                .from('business_assets')
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: true // Timpa jika sudah ada
+                });
+
+            if (error) {
+                console.error('Error uploading logo:', error);
+                logoUploadStatus.textContent = 'Upload Gagal. Cek RLS Storage Anda!';
+                showToast("Storage Error", "Upload gagal: " + error.message, true);
+            } else {
+                showToast("Sukses!", "Logo berhasil di-upload. Memuat ulang...");
+                fetchLogoUrl(); // Muat ulang logo setelah upload
+                logoUploadStatus.textContent = 'Status: Logo Kustom Aktif';
+            }
+        });
+        
         // ======================= FUNGSI DASHBOARD STATS (SINKRONISASI PEMBAYARAN) =======================
         
         async function fetchDashboardStats() {
             if (!authReady || !userId) return;
 
-            // 1. Ambil semua Invoice untuk user ini
             const { data: invoices, error } = await supabaseClient
                 .from('invoices')
-                .select('amount, status, created_at'); // Menggunakan created_at sebagai placeholder untuk tanggal invoice
+                .select('amount, status, created_at, amount_paid')
+                .eq('user_id', userId);
 
             if (error) {
                 console.error("Error fetching invoice stats:", error);
-                showToast("Error", "Gagal memuat statistik keuangan.", true);
+                showToast("Error", "Gagal memuat statistik keuangan: " + error.message, true);
                 return;
             }
 
-            let totalLunas = 0;
-            let totalDP = 0;
-            let totalBelumLunas = 0;
+            let totalLunasAmount = 0;
+            let totalDPAmount = 0;
+            let totalBelumLunasAmount = 0;
             let totalRevenueBulanIni = 0;
 
             const currentMonthYear = new Date().toISOString().substring(0, 7);
 
-            invoices.forEach(inv => {
-                const amount = inv.amount || 0;
+            (invoices || []).forEach(inv => {
+                const totalAmount = inv.amount || 0;
+                const amountPaid = inv.amount_paid || 0;
                 
-                // Kalkulasi total status
+                // Kalkulasi LUNAS/DP/BELUM BAYAR (Berdasarkan Nilai Kontrak)
                 if (inv.status === 'LUNAS') {
-                    totalLunas += amount;
+                    totalLunasAmount += totalAmount; 
                 } else if (inv.status === 'DP') {
-                    // Asumsi DP adalah persentase dari total harga,
-                    // Tapi di sini kita akan menghitung total nilai Invoice yang statusnya DP
-                    totalDP += amount;
+                    totalDPAmount += amountPaid;
+                    totalBelumLunasAmount += (totalAmount - amountPaid);
                 } else if (inv.status === 'BELUM BAYAR') {
-                    totalBelumLunas += amount;
+                    totalBelumLunasAmount += totalAmount;
                 }
 
-                // Kalkulasi Revenue Bulan Ini (Asumsi semua LUNAS/DP/BELUM BAYAR dihitung, kita fokus ke total amount)
-                // PENTING: Untuk revenue, kita harus menghitung total pembayaran yang masuk, BUKAN total invoice.
-                // Karena kita tidak memiliki kolom 'amount_paid' di tabel invoice, kita akan menggunakan total amount untuk demo.
-                // Jika ingin akurat, Anda harus membuat tabel 'payments' atau kolom 'amount_paid' di 'invoices'.
-                
+                // Kalkulasi Revenue Bulan Ini (Uang yang BENAR-BENAR MASUK)
                 const invoiceMonthYear = inv.created_at ? inv.created_at.substring(0, 7) : '';
 
                 if (invoiceMonthYear === currentMonthYear) {
-                    // Menggunakan total nilai invoice sebagai placeholder revenue
-                    totalRevenueBulanIni += amount; 
+                    totalRevenueBulanIni += amountPaid; 
                 }
 
             });
             
-            // 2. Update UI Dashboard
-            document.getElementById('stat-total-lunas').textContent = formatRupiah(totalLunas);
-            document.getElementById('stat-total-dp').textContent = formatRupiah(totalDP);
-            document.getElementById('stat-total-belum-lunas').textContent = formatRupiah(totalBelumLunas);
+            document.getElementById('stat-total-lunas').textContent = formatRupiah(totalLunasAmount);
+            document.getElementById('stat-total-dp').textContent = formatRupiah(totalDPAmount);
+            document.getElementById('stat-total-belum-lunas').textContent = formatRupiah(totalBelumLunasAmount);
             document.getElementById('stat-revenue-month').textContent = formatRupiah(totalRevenueBulanIni);
         }
 
-        // ======================= FUNGSI CRUD PACKAGES =======================
+        // ======================= FUNGSI CRUD PACKAGES (CARD VIEW) =======================
         
-        const packagesTableBody = document.getElementById('packages-table-body');
+        const packagesGrid = document.getElementById('packages-grid');
         const addPackageBtn = document.getElementById('add-package-btn');
         const packageModal = document.getElementById('add-package-modal');
         const closePackageModalBtn = document.getElementById('close-package-modal-btn');
@@ -1197,37 +1268,52 @@
 
             if (error) {
                 console.error("Error fetching packages:", error);
-                showToast("Error", "Gagal memuat data paket.", true);
+                showToast("Error", "Gagal memuat data paket. (Cek Setup Supabase Anda)", true);
                 packagesData = [];
             } else {
-                packagesData = data;
+                packagesData = data || [];
                 renderPackagesTable();
-                // Setelah packagesData terisi, update dropdown di modal booking
                 populatePackageDropdown(); 
             }
         }
 
-        // Render Packages Table
+        // Render Packages Table (Card View)
         function renderPackagesTable() {
-            packagesTableBody.innerHTML = '';
+            packagesGrid.innerHTML = '';
+
             if (packagesData.length === 0) {
-                packagesTableBody.innerHTML = `<tr><td colspan="4" class="py-10 text-center text-gray-400">Tidak ada paket jasa yang tersedia.</td></tr>`;
+                packagesGrid.innerHTML = `<div class="lg:col-span-3 text-center py-10 text-gray-400">Tidak ada paket jasa yang tersedia. Klik "Tambah Paket Baru" untuk memulai.</div>`;
                 return;
             }
-
+            
             packagesData.forEach(pkg => {
-                const row = document.createElement('tr');
-                row.className = 'border-b border-white/5';
-                row.innerHTML = `
-                    <td class="py-4 pr-4 font-medium text-white">${pkg.name}</td>
-                    <td class="py-4 px-4">${formatRupiah(pkg.price)}</td>
-                    <td class="py-4 px-4">${pkg.description.substring(0, 50)}${pkg.description.length > 50 ? '...' : ''}</td>
-                    <td class="py-4 pl-4 space-x-2">
-                        <button class="text-blue-400 hover:text-blue-300 edit-package-btn" data-id="${pkg.id}">Edit</button>
-                        <button class="text-red-400 hover:text-red-300 delete-package-btn" data-id="${pkg.id}">Hapus</button>
-                    </td>
+                const card = document.createElement('div');
+                card.className = 'package-card rounded-xl p-6 flex flex-col justify-between';
+                
+                // Pisahkan deskripsi per baris untuk tampilan list (seperti fitur)
+                const featuresHtml = pkg.description.split('\n').map(line => 
+                    `<div class="flex items-start space-x-2 text-gray-300">
+                        <svg class="w-5 h-5 text-green-400 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>${line.trim()}</span>
+                    </div>`
+                ).join('');
+
+                card.innerHTML = `
+                    <div>
+                        <h3 class="text-2xl font-bold text-white mb-2">${pkg.name}</h3>
+                        <p class="text-4xl font-extrabold text-pink-400 mb-6">${formatRupiah(pkg.price)}</p>
+                        <div class="space-y-3 text-sm min-h-[150px] mb-4">
+                            ${featuresHtml}
+                        </div>
+                    </div>
+                    <div class="flex space-x-3 mt-4 pt-4 border-t border-white/10">
+                        <button class="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-700 edit-package-btn" data-id="${pkg.id}">Edit</button>
+                        <button class="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-red-700 delete-package-btn" data-id="${pkg.id}">Hapus</button>
+                    </div>
                 `;
-                packagesTableBody.appendChild(row);
+                packagesGrid.appendChild(card);
             });
 
             // Tambahkan event listener untuk tombol Edit dan Hapus
@@ -1241,7 +1327,7 @@
             document.querySelectorAll('.delete-package-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const id = e.target.dataset.id;
-                    if (confirm('Apakah Anda yakin ingin menghapus paket ini?')) {
+                    if (confirm(`Anda yakin ingin menghapus paket "${packagesData.find(p => p.id === parseInt(id))?.name}"? Tindakan ini tidak dapat dibatalkan.`)) {
                         deletePackage(id);
                     }
                 });
@@ -1263,11 +1349,9 @@
             const packageData = { name, price, description, user_id: userId };
             let error;
 
-            if (isEditMode && id) {
-                // Update
+            if (id) {
                 ({ error } = await supabaseClient.from('packages').update(packageData).eq('id', id));
             } else {
-                // Insert
                 ({ error } = await supabaseClient.from('packages').insert(packageData));
             }
 
@@ -1276,7 +1360,7 @@
                 showToast("Error", "Gagal menyimpan paket: " + error.message, true);
             } else {
                 closePackageModal();
-                showToast("Sukses!", `Paket berhasil ${isEditMode ? 'diupdate' : 'ditambahkan'}.`);
+                showToast("Sukses!", `Paket berhasil ${id ? 'diupdate' : 'ditambahkan'}.`);
                 fetchPackages();
             }
         });
@@ -1299,8 +1383,8 @@
         const bookingModalOverlay = document.getElementById('booking-modal-overlay');
         const closeBookingModalBtn = document.getElementById('close-booking-modal-btn');
         const addBookingBtn = document.getElementById('add-booking-btn');
-        const createInvoiceBtn = document.getElementById('create-invoice-btn'); // Juga terhubung ke modal booking
-        const addEventBtn = document.getElementById('add-event-btn'); // Juga terhubung ke modal booking
+        const createInvoiceBtn = document.getElementById('create-invoice-btn');
+        const addEventBtn = document.getElementById('add-event-btn');
         const bookingPackageId = document.getElementById('booking-package-id');
         const packagePriceDisplay = document.getElementById('package-price-display');
         const saveBookingBtn = document.getElementById('save-booking-btn');
@@ -1350,8 +1434,8 @@
         }
 
         addBookingBtn.addEventListener('click', openBookingModal);
-        createInvoiceBtn.addEventListener('click', openBookingModal); // Pemicu Invoice
-        addEventBtn.addEventListener('click', openBookingModal); // Pemicu Calendar
+        createInvoiceBtn.addEventListener('click', openBookingModal);
+        addEventBtn.addEventListener('click', openBookingModal);
         closeBookingModalBtn.addEventListener('click', closeBookingModal);
         bookingModalOverlay.addEventListener('click', closeBookingModal);
 
@@ -1372,6 +1456,12 @@
             const selectedPackage = packagesData.find(p => p.id === parseInt(packageId));
             const packagePrice = selectedPackage ? selectedPackage.price : 0;
             const totalAmount = packagePrice; 
+
+            // Validasi: Amount Paid tidak boleh melebihi Total Price
+            if (amountPaid > totalAmount) {
+                showToast("Validasi Pembayaran", `Jumlah bayar (${formatRupiah(amountPaid)}) tidak boleh melebihi harga paket (${formatRupiah(totalAmount)}).`, true);
+                return;
+            }
 
             // 1. Simpan Booking
             const newBooking = {
@@ -1401,7 +1491,7 @@
                 booking_id: bookingId,
                 client_name: clientName,
                 item_description: selectedPackage.name,
-                amount: totalAmount, // Total harga paket
+                amount: totalAmount,
                 status: paymentStatus,
                 amount_paid: amountPaid,
                 due_date: date, // Placeholder tanggal jatuh tempo
@@ -1417,7 +1507,7 @@
                 showToast("Warning", "Booking tersimpan, tetapi GAGAL membuat Invoice otomatis: " + invoiceError.message, true);
             } else {
                 closeBookingModal();
-                showToast("Sukses!", "Booking dan Invoice berhasil dibuat! Kirim ke klien sekarang.");
+                showToast("Sukses!", "Booking dan Invoice berhasil dibuat!");
                 fetchBookings();
                 fetchInvoices();
                 fetchDashboardStats();
@@ -1430,19 +1520,19 @@
 
             const { data: bookings, error } = await supabaseClient
                 .from('bookings')
-                .select('*, packages(name)') // Join packages table
+                .select('*, packages(name)') 
                 .eq('user_id', userId)
                 .order('date', { ascending: true });
             
             const bookingsTableBody = document.getElementById('bookings-table-body');
             bookingsTableBody.innerHTML = '';
 
-            if (error || !bookings || bookings.length === 0) {
+            if (error || !(bookings || []).length) {
                 bookingsTableBody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-gray-400">Belum ada janji pemotretan yang tercatat.</td></tr>`;
                 return;
             }
 
-            bookings.forEach(b => {
+            (bookings || []).forEach(b => {
                 const row = document.createElement('tr');
                 const packageName = b.packages ? b.packages.name : 'N/A';
                 const statusColor = getPaymentStatusColor(b.payment_status);
@@ -1474,14 +1564,14 @@
             const invoicesTableBody = document.getElementById('invoices-table-body');
             invoicesTableBody.innerHTML = '';
 
-            if (error || !invoices || invoices.length === 0) {
+            if (error || !(invoices || []).length) {
                 invoicesTableBody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-gray-400">Belum ada faktur yang dibuat.</td></tr>`;
                 return;
             }
 
-            invoices.forEach((i, index) => {
+            (invoices || []).forEach((i, index) => {
                 const statusColor = getPaymentStatusColor(i.status);
-                const invoiceNumber = `INV-${new Date(i.created_at).getFullYear()}-${index + 1}`;
+                const invoiceNumber = `INV-${new Date(i.created_at).getFullYear()}-${String(i.id).padStart(4, '0')}`;
                 
                 const row = document.createElement('tr');
                 row.className = 'border-b border-white/5';
@@ -1492,7 +1582,7 @@
                     <td class="py-4 px-4"><span class="inline-block px-3 py-1 text-xs font-semibold rounded-full text-white ${statusColor}">${i.status}</span></td>
                     <td class="py-4 pl-4 space-x-2">
                         <button class="text-green-400 hover:text-green-300 download-invoice-btn" data-id="${i.id}">Download</button>
-                        <button class="text-blue-400 hover:text-blue-300 edit-invoice-btn" data-id="${i.id}">Bayar</button>
+                        <button class="text-blue-400 hover:text-blue-300 pay-invoice-btn" data-id="${i.id}">Bayar</button>
                     </td>
                 `;
                 invoicesTableBody.appendChild(row);
@@ -1500,7 +1590,6 @@
         }
 
         // ======================= FUNGSI LAINNYA =======================
-        // (Untuk kalender, dsb.)
         const calendarGrid = document.getElementById('calendar-grid');
         const monthYearTitle = document.getElementById('calendar-month-year');
         const prevMonthBtn = document.getElementById('prev-month-btn');
@@ -1544,7 +1633,6 @@
         
         document.addEventListener('DOMContentLoaded', () => {
             renderCalendar(currentDate.getFullYear(), currentDate.getMonth());
-            // Inisialisasi Auth/Login akan memicu fetchPackages, fetchDashboardStats, dan navigateToSection.
         });
 
     </script>
