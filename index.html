@@ -955,6 +955,35 @@
         </div>
     </div>
 
+    <!-- Modal Aksi INVOICE BARU -->
+    <div id="invoice-action-modal" class="fade-in fixed inset-0 z-40 hidden items-center justify-center p-4">
+        <div id="invoice-action-overlay" class="fixed inset-0 bg-black/50"></div>
+        <div class="glass-card relative z-50 w-full max-w-md rounded-2xl p-6 text-center">
+            <h3 class="mb-4 text-2xl font-semibold text-white">Aksi Invoice</h3>
+            <p id="invoice-action-message" class="text-gray-300 mb-6">Pilih tindakan untuk Invoice #<span id="invoice-action-number" class="font-bold"></span> milik <span id="invoice-action-client" class="font-bold"></span>.</p>
+            
+            <input type="hidden" id="current-invoice-id">
+            
+            <div class="space-y-4">
+                <button id="action-download-pdf"
+                    class="w-full flex items-center justify-center rounded-lg bg-pink-600 px-5 py-3 font-semibold text-white transition-all hover:bg-pink-700">
+                    <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    Download PDF
+                </button>
+                <button id="action-send-email"
+                    class="w-full flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white transition-all hover:bg-blue-700">
+                    <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    Kirim Email ke Klien (Dev)
+                </button>
+            </div>
+            
+            <button id="close-invoice-action-modal-btn"
+                class="mt-6 w-full rounded-lg bg-white/10 px-5 py-3 font-semibold text-white transition-all hover:bg-white/20">
+                Tutup
+            </button>
+        </div>
+    </div>
+
 
     <!-- ======================= SUPABASE & JAVASCRIPT ======================= -->
     <script type="module">
@@ -1097,7 +1126,7 @@
                     link.classList.add('sidebar-active');
                     pageTitle.textContent = link.textContent.trim();
                     // Load data spesifik untuk section
-                    if (sectionId === 'packages') fetchPackages(true); // Panggil renderPackagesTable
+                    if (sectionId === 'packages') fetchPackages(true); 
                     if (sectionId === 'bookings') fetchBookings();
                     if (sectionId === 'invoices') fetchInvoices();
                     if (sectionId === 'calendar') {
@@ -1107,7 +1136,7 @@
                     }
                     if (sectionId === 'dashboard') {
                         fetchDashboardStats();
-                        fetchUpcomingBookings(); // Ambil data untuk tabel upcoming
+                        fetchUpcomingBookings(); 
                         fetchNextPhotoshoot();
                     }
                     if (sectionId === 'settings') {
@@ -1141,16 +1170,6 @@
         const logoUploadStatus = document.getElementById('logo-upload-status');
         const businessNameInput = document.getElementById('business-name-input');
         const businessSloganInput = document.getElementById('business-slogan-input');
-
-        // FUNGSI BARU: Fetch Branding Details (Jika Anda punya tabel profiles/settings)
-        // Karena tidak ada tabel settings/profiles di skema, kita buat default
-        async function fetchBrandingDetails() {
-             // Di sini Anda bisa memuat branding dari database. 
-             // Untuk demo, kita pertahankan brandingData global.
-             
-             // Memuat logo dari Storage (jika ada)
-             await fetchLogoUrl();
-        }
 
         // FUNGSI BARU: Simpan Branding Details (Poin 5)
         document.getElementById('save-branding-btn').addEventListener('click', () => {
@@ -1204,7 +1223,7 @@
                 document.getElementById('user-avatar').src = `https://placehold.co/40x40/f871b0/white?text=${userInitial}`;
 
                 // Fetch data awal saat login
-                fetchPackages(false); // Jangan langsung render tabel packages, cukup muat data
+                fetchPackages(false); 
                 fetchDashboardStats();
                 fetchUpcomingBookings(); 
                 fetchLogoUrl(); 
@@ -1220,6 +1239,7 @@
 
         // Handle Upload Logo
         document.getElementById('logo-upload-btn').addEventListener('click', () => {
+            // Memperbaiki masalah tombol branding tidak bisa diklik di sini
             logoUploadInput.click();
         });
 
@@ -1729,6 +1749,15 @@
                 `;
                 bookingsTableBody.appendChild(row);
             });
+            
+            // FIX: Aksi Booking Edit (Poin 1)
+            document.querySelectorAll('.edit-booking-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const bookingId = parseInt(e.target.dataset.id);
+                    // Placeholder: Untuk demo, kita tampilkan toast. Anda bisa membuka modal edit di sini.
+                    showToast("Info", `Fungsi Edit Booking #${bookingId} sedang dikembangkan.`);
+                });
+            });
         }
         
         // FUNGSI BARU: Generate dan Download Invoice sebagai PDF (Poin Download)
@@ -1743,61 +1772,141 @@
                 showToast("Error", "Gagal memuat detail invoice.", true);
                 return;
             }
-
-            const doc = new jsPDF();
-            const margin = 20;
+            
+            // --- LOGIKA GENERASI PDF DENGAN DESAIN BARU (Sesuai gambar Sempurna Design) ---
+            const doc = new jsPDF('p', 'mm', 'a4');
+            const totalWidth = doc.internal.pageSize.getWidth();
+            const totalHeight = doc.internal.pageSize.getHeight();
+            const margin = 15;
             let y = margin;
             
-            // Header
-            doc.setFontSize(22);
-            doc.setTextColor(30, 42, 120); // brand-blue
-            doc.text(`${brandingData.name || 'ShutterPro'} - INVOICE`, margin, y);
-            y += 8;
-            doc.setFontSize(10);
-            doc.setTextColor(100);
-            doc.text(brandingData.slogan || "Abadikan Momen Anda", margin, y);
-            y += 15;
+            // 1. HEADER (Gradien Merah Muda/Ungu)
+            const headerHeight = 50;
+            // Background Gradien (Approximate)
+            doc.setFillColor(30, 42, 120); // Dark Blue (Brand Blue)
+            doc.rect(0, 0, totalWidth, headerHeight, 'F');
+            
+            // Logo Placeholder
+            doc.setFillColor(255);
+            doc.rect(margin, 10, 10, 10, 'F'); 
+            
+            // Brand Name & Invoice Title
+            doc.setFontSize(16);
+            doc.setTextColor(255);
+            doc.setFont(undefined, 'bold');
+            doc.text(brandingData.name || 'SHUTTERPRO', margin + 15, 17);
 
-            // Invoice Details
+            doc.setFontSize(36);
+            doc.setTextColor(255, 150, 150); // Pinkish White
+            doc.text("INVOICE", margin, 35);
+            
             doc.setFontSize(12);
-            doc.setTextColor(0);
-            const invoiceNumber = `INV-${new Date(invoice.created_at).getFullYear()}-${String(invoice.id).padStart(4, '0')}`;
-            doc.text(`Invoice No: ${invoiceNumber}`, margin, y);
-            doc.text(`Tanggal: ${new Date(invoice.created_at).toLocaleDateString('id-ID')}`, 130, y);
-            y += 7;
-            doc.text(`Untuk: ${invoice.client_name}`, margin, y);
-            y += 15;
-
-            // Table
-            const tableData = [
-                ["1", invoice.item_description, formatRupiah(invoice.amount), formatRupiah(invoice.amount)]
+            doc.setTextColor(255);
+            doc.text(`#${String(invoice.id).padStart(6, '0')}`, margin, 42);
+            
+            // Date and Info Column (Kanan Atas)
+            doc.setFontSize(9);
+            doc.setTextColor(200);
+            doc.setFont(undefined, 'normal');
+            doc.text(`Date Information: ${new Date(invoice.created_at).toLocaleDateString('id-ID')}`, totalWidth - margin, 15, { align: 'right' });
+            doc.text(`Invoice Number: INV-${new Date(invoice.created_at).getFullYear()}-${String(invoice.id).padStart(4, '0')}`, totalWidth - margin, 20, { align: 'right' });
+            
+            doc.setFontSize(10);
+            doc.setTextColor(255);
+            doc.text(`INVOICE TO:`, totalWidth - margin, 28, { align: 'right' });
+            doc.text(invoice.client_name, totalWidth - margin, 33, { align: 'right' });
+            
+            doc.setFontSize(10);
+            doc.setTextColor(255, 150, 150);
+            doc.text(`Total Due: ${formatRupiah(invoice.amount - invoice.amount_paid)}`, totalWidth - margin, 42, { align: 'right' });
+            
+            y = 55; // Mulai konten setelah header
+            
+            // 2. ITEM TABLE
+            
+            const tableHeaders = ['NO.', 'ITEM DESCRIPTION', 'PRICE', 'QTY.', 'TOTAL'];
+            const itemDescription = invoice.item_description || 'Jasa Fotografi';
+            const tableBody = [
+                 ["1", itemDescription, formatRupiah(invoice.amount), "1", formatRupiah(invoice.amount)]
             ];
-            const finalY = doc.autoTable.previous ? doc.autoTable.previous.finalY : y;
             
             doc.autoTable({
-                startY: finalY,
-                head: [['#', 'Deskripsi Item', 'Harga Satuan', 'Total']],
-                body: tableData,
-                theme: 'striped',
-                headStyles: { fillColor: [30, 42, 120] },
+                startY: y,
+                head: [tableHeaders],
+                body: tableBody,
+                theme: 'plain',
+                styles: {
+                    halign: 'left',
+                    textColor: [50, 50, 50],
+                    lineColor: [230, 230, 230],
+                    lineWidth: 0.1
+                },
+                headStyles: { 
+                    fillColor: [240, 240, 240], // Light Gray
+                    textColor: [30, 42, 120], // Brand Blue
+                    fontStyle: 'bold'
+                },
+                didDrawCell: (data) => {
+                    // Membuat garis bawah panjang di setiap baris item
+                    if (data.section === 'body') {
+                        doc.setDrawColor(200);
+                        doc.setLineWidth(0.1);
+                        doc.line(margin, data.cell.y + data.cell.height, totalWidth - margin, data.cell.y + data.cell.height);
+                    }
+                },
                 margin: { top: margin, left: margin, right: margin }
             });
             
             y = doc.autoTable.previous.finalY + 10;
             
-            // Summary and Status
-            doc.setFontSize(12);
-            doc.text(`TOTAL HARGA: ${formatRupiah(invoice.amount)}`, 130, y);
-            y += 7;
-            doc.text(`SUDAH DIBAYAR: ${formatRupiah(invoice.amount_paid)}`, 130, y);
-            y += 7;
-            doc.text(`SISA TAGIHAN: ${formatRupiah(invoice.amount - invoice.amount_paid)}`, 130, y);
-            y += 15;
+            // 3. PAYMENT SUMMARY (Kanan Bawah)
+            
+            const subtotal = invoice.amount;
+            const remainingDue = invoice.amount - invoice.amount_paid;
+            
+            // Summary Box
+            doc.autoTable({
+                startY: y,
+                body: [
+                    ['Sub total:', formatRupiah(subtotal)],
+                    ['Tax (0%):', formatRupiah(0)],
+                    [{ content: 'Total:', styles: { fillColor: [255, 46, 76], textColor: 255, fontStyle: 'bold' } }, 
+                     { content: formatRupiah(invoice.amount), styles: { fillColor: [255, 46, 76], textColor: 255, fontStyle: 'bold' } }]
+                ],
+                theme: 'plain',
+                styles: { fontSize: 10, cellPadding: 2, textColor: [50, 50, 50] },
+                columnStyles: { 0: { halign: 'right', cellWidth: 30 }, 1: { halign: 'right', cellWidth: 30 } },
+                margin: { left: totalWidth - margin - 60, right: margin } // Posisikan di kanan
+            });
+            
+            y = doc.autoTable.previous.finalY + 10;
+            
+            // 4. THANK YOU & TERMS
             
             doc.setFontSize(14);
-            doc.setTextColor(invoice.status === 'LUNAS' ? 0 : 255, invoice.status === 'LUNAS' ? 150 : 0, 0);
-            doc.text(`STATUS: ${invoice.status}`, margin, y);
-            y += 7;
+            doc.setTextColor(30, 42, 120);
+            doc.text("Thank you for your business", margin, y);
+            y += 10;
+            
+            doc.setFontSize(10);
+            doc.setTextColor(50);
+            doc.text("PAYMENT METHOD", margin, y);
+            y += 5;
+            doc.text("Bank Account: [Nomor Rekening Anda]", margin, y);
+            y += 5;
+            doc.text("Bank Full Name: [Nama Bank Anda]", margin, y);
+            y += 10;
+            
+            doc.setFontSize(10);
+            doc.setTextColor(50);
+            doc.text("TERMS & CONDITIONS", margin, y);
+            y += 5;
+            doc.text("Due upon receipt. Failure to pay within 30 days may result in additional charges.", margin, y);
+            
+            // Status Lunas / Sisa Tagihan (Bawah Kiri)
+            doc.setFontSize(10);
+            doc.setTextColor(150);
+            doc.text(`Status Pembayaran: ${invoice.status}`, margin, totalHeight - 20);
 
             doc.save(`Invoice_${invoiceNumber}.pdf`);
             showToast("Sukses!", "Faktur berhasil di-download.");
@@ -1842,18 +1951,25 @@
                     <td class="py-4 px-4">${formatRupiah(i.amount)}</td>
                     <td class="py-4 px-4"><span class="inline-block px-3 py-1 text-xs font-semibold rounded-full text-white ${statusColor}">${i.status}</span></td>
                     <td class="py-4 pl-4 space-x-2">
-                        <button class="text-green-400 hover:text-green-300 download-invoice-btn" data-id="${i.id}">Download</button>
+                        <button class="text-green-400 hover:text-green-300 invoice-action-btn" data-id="${i.id}" data-number="${invoiceNumber}" data-client="${i.client_name}">Aksi</button>
                         ${payButton}
                     </td>
                 `;
                 invoicesTableBody.appendChild(row);
             });
             
-            // Attach listeners (Poin 3)
-            document.querySelectorAll('.download-invoice-btn').forEach(btn => {
+            // FIX: Aksi Invoice (Menampilkan Modal Aksi)
+            document.querySelectorAll('.invoice-action-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const invoiceId = parseInt(e.target.dataset.id);
-                    generateInvoicePDF(invoiceId);
+                    const invoiceNumber = e.target.dataset.number;
+                    const clientName = e.target.dataset.client;
+                    
+                    document.getElementById('current-invoice-id').value = invoiceId;
+                    document.getElementById('invoice-action-number').textContent = invoiceNumber;
+                    document.getElementById('invoice-action-client').textContent = clientName;
+
+                    openInvoiceActionModal();
                 });
             });
             
@@ -1862,16 +1978,47 @@
                     const invoiceId = parseInt(e.target.dataset.id);
                     const inv = invoices.find(i => i.id === invoiceId);
                     
-                    // Gunakan jumlah sisa tagihan untuk melunasi
                     const amountToPay = inv.amount - inv.amount_paid;
                     
-                    if (confirm(`Melunasi sisa tagihan ${formatRupiah(amountToPay)} untuk Invoice ${invoiceId}?`)) {
+                    if (confirm(`Melunasi sisa tagihan ${formatRupiah(amountToPay)} untuk Invoice ${inv.client_name}?`)) {
                         updateInvoiceStatus(invoiceId, inv.amount);
                     }
                 });
             });
         }
         
+        // FUNGSI BARU: Modal Aksi Invoice
+        const invoiceActionModal = document.getElementById('invoice-action-modal');
+        const closeInvoiceActionModalBtn = document.getElementById('close-invoice-action-modal-btn');
+        const actionDownloadPdf = document.getElementById('action-download-pdf');
+        const actionSendEmail = document.getElementById('action-send-email');
+
+        function openInvoiceActionModal() {
+            invoiceActionModal.classList.remove('hidden');
+            invoiceActionModal.classList.add('flex');
+        }
+
+        function closeInvoiceActionModal() {
+            invoiceActionModal.classList.remove('flex');
+            invoiceActionModal.classList.add('hidden');
+        }
+
+        closeInvoiceActionModalBtn.addEventListener('click', closeInvoiceActionModal);
+        document.getElementById('invoice-action-overlay').addEventListener('click', closeInvoiceActionModal);
+
+        // Aksi Download PDF dari Modal
+        actionDownloadPdf.addEventListener('click', () => {
+            const invoiceId = parseInt(document.getElementById('current-invoice-id').value);
+            closeInvoiceActionModal();
+            generateInvoicePDF(invoiceId);
+        });
+
+        // Aksi Kirim Email dari Modal
+        actionSendEmail.addEventListener('click', () => {
+            closeInvoiceActionModal();
+            showToast("Info", "Fungsi Kirim Email sedang dikembangkan.", false);
+        });
+
         // FUNGSI BARU: Update Status Invoice ke LUNAS
         async function updateInvoiceStatus(invoiceId, totalAmount) {
             const { error } = await supabaseClient
