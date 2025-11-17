@@ -10,14 +10,14 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1e2a78">
     
-    <!-- Memuat Tailwind CSS - PERBAIKAN URL -->
+    <!-- Memuat Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Memuat Font Inter - PERBAIKAN URL -->
+    <!-- Memuat Font Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- MEMUAT SUPABASE V2 - PERBAIKAN URL -->
+    <!-- MEMUAT SUPABASE V2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <!-- Konfigurasi Kustom Tailwind (jika diperlukan) -->
@@ -187,6 +187,9 @@
             color: #ffffff;
             font-weight: 600;
             border-radius: 0.5rem;
+        }
+        .calendar-day.has-event {
+            border: 2px solid #ff2e4c;
         }
     </style>
 </head>
@@ -962,6 +965,7 @@
         let userId = null; 
         let authReady = false;
         let packagesData = []; // Data paket dimuat dari Supabase
+        let upcomingBookingsData = []; // Data untuk kalender dan dashboard
 
         // ======================= FUNGSI UTILITAS =======================
 
@@ -982,6 +986,15 @@
                 case 'DP': return 'bg-blue-500';
                 case 'BELUM BAYAR': return 'bg-pink-500';
                 default: return 'bg-gray-500';
+            }
+        }
+
+        function getStatusTextColor(status) {
+             switch (status) {
+                case 'LUNAS': return 'text-green-300';
+                case 'DP': return 'text-blue-300';
+                case 'BELUM BAYAR': return 'text-pink-300';
+                default: return 'text-gray-300';
             }
         }
         
@@ -1030,7 +1043,33 @@
         const navLinks = document.querySelectorAll('.nav-link');
         const contentSections = document.querySelectorAll('.content-section');
         const pageTitle = document.getElementById('page-title');
+
+        // PENTING: Perbaikan fungsi toggleSidebar untuk mobile
+        const menuBtn = document.getElementById('menu-btn');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+        function toggleSidebar(show) {
+            if (show) {
+                sidebar.classList.remove('-translate-x-full');
+                sidebarOverlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+            }
+        }
         
+        // Mobile Menu Fix (Poin 1)
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isSidebarClosed = sidebar.classList.contains('-translate-x-full');
+            toggleSidebar(isSidebarClosed);
+        });
+        sidebarOverlay.addEventListener('click', () => {
+            toggleSidebar(false);
+        });
+        // End Mobile Menu Fix
+
         function navigateToSection(sectionId) {
             contentSections.forEach(section => {
                 section.classList.remove('active');
@@ -1047,12 +1086,20 @@
                     link.classList.add('sidebar-active');
                     pageTitle.textContent = link.textContent.trim();
                     // Load data spesifik untuk section
-                    if (sectionId === 'packages') renderPackagesTable(); // Panggil renderPackagesTable
+                    if (sectionId === 'packages') renderPackagesTable();
                     if (sectionId === 'bookings') fetchBookings();
                     if (sectionId === 'invoices') fetchInvoices();
-                    if (sectionId === 'dashboard') fetchDashboardStats();
+                    if (sectionId === 'calendar') {
+                        fetchUpcomingBookings(); // Pastikan data event dimuat sebelum kalender di-render
+                        renderCalendar(currentDate.getFullYear(), currentDate.getMonth());
+                    }
+                    if (sectionId === 'dashboard') {
+                        fetchDashboardStats();
+                        fetchUpcomingBookings(); // Ambil data untuk tabel upcoming
+                    }
                 }
             });
+            toggleSidebar(false); // Tutup sidebar setelah navigasi (untuk mobile)
         }
         navLinks.forEach(link => {
             link.addEventListener('click', (e) => {
@@ -1079,7 +1126,6 @@
         // Fungsi untuk mengambil URL Logo dari Storage
         async function fetchLogoUrl() {
             if (!userId) return;
-            // Ambil URL default (kita asumsikan logo disimpan di bawah folder userId/logo.png)
             const filePath = `${userId}/logo_business.png`; 
 
             // Supabase getPublicUrl tidak memerlukan autentikasi setelah RLS diatur
@@ -1088,17 +1134,19 @@
                 .getPublicUrl(filePath);
             
             if (data && data.publicUrl) {
+                const url = data.publicUrl;
                 // Coba muat URL logo
                 const img = new Image();
                 img.onload = () => {
-                    logoPreview.src = data.publicUrl;
+                    logoPreview.src = url;
+                    document.getElementById('user-avatar').src = url; // Update avatar juga
                     logoUploadStatus.textContent = 'Status: Logo Kustom Aktif';
                 };
                 img.onerror = () => {
                     logoPreview.src = "https://placehold.co/64x64/f871b0/white?text=SP";
                     logoUploadStatus.textContent = 'Status: Logo Default';
                 };
-                img.src = data.publicUrl;
+                img.src = url;
 
             }
         }
@@ -1120,7 +1168,8 @@
                 // Fetch data awal saat login
                 fetchPackages();
                 fetchDashboardStats();
-                fetchLogoUrl(); // Panggil fetchLogoUrl setelah login
+                fetchUpcomingBookings(); // Muat data booking awal
+                fetchLogoUrl(); 
                 navigateToSection('dashboard'); 
             } else {
                 authReady = false;
@@ -1165,8 +1214,57 @@
             }
         });
         
-        // ======================= FUNGSI DASHBOARD STATS (SINKRONISASI PEMBAYARAN) =======================
+        // ======================= FUNGSI DASHBOARD & UPCOMING BOOKINGS =======================
         
+        // FUNGSI BARU: Ambil Booking Mendatang (untuk Dashboard & Calendar)
+        async function fetchUpcomingBookings() {
+            if (!authReady || !userId) return;
+
+            const now = new Date().toISOString();
+            
+            const { data, error } = await supabaseClient
+                .from('bookings')
+                .select('id, client_name, date, payment_status, packages(name)')
+                .eq('user_id', userId)
+                .gte('date', now) // Hanya ambil booking yang akan datang (atau hari ini)
+                .order('date', { ascending: true });
+
+            if (error) {
+                console.error("Error fetching upcoming bookings:", error);
+                return;
+            }
+
+            upcomingBookingsData = data || [];
+            renderUpcomingShootsTable();
+            renderCalendarEvents();
+        }
+
+        // FUNGSI BARU: Render Tabel Upcoming Shoots di Dashboard
+        function renderUpcomingShootsTable() {
+            const tableBody = document.getElementById('upcoming-shoots-table');
+            tableBody.innerHTML = '';
+            
+            if (upcomingBookingsData.length === 0) {
+                 tableBody.innerHTML = `<tr><td colspan="3" class="py-6 text-center text-gray-400">Tidak ada pemotretan mendatang.</td></tr>`;
+                 return;
+            }
+            
+            (upcomingBookingsData.slice(0, 5)).forEach(b => {
+                 const row = document.createElement('tr');
+                 const packageName = b.packages ? b.packages.name : 'N/A';
+                 const statusColor = getPaymentStatusColor(b.payment_status);
+
+                 row.className = 'border-b border-white/5';
+                 row.innerHTML = `
+                     <td class="py-3 pr-4">${b.client_name}</td>
+                     <td class="py-3 px-4">${packageName}</td>
+                     <td class="py-3 px-4"><span class="inline-block px-3 py-1 text-xs font-semibold rounded-full text-white ${statusColor}">${b.payment_status}</span></td>
+                 `;
+                 tableBody.appendChild(row);
+            });
+        }
+
+
         async function fetchDashboardStats() {
             if (!authReady || !userId) return;
 
@@ -1177,6 +1275,7 @@
 
             if (error) {
                 console.error("Error fetching invoice stats:", error);
+                // Hanya menampilkan error toast, jangan mengubah UI stat agar tidak ambigu
                 showToast("Error", "Gagal memuat statistik keuangan: " + error.message, true);
                 return;
             }
@@ -1195,20 +1294,14 @@
                 // Kalkulasi LUNAS/DP/BELUM BAYAR (Berdasarkan Nilai Kontrak)
                 if (inv.status === 'LUNAS') {
                     totalLunasAmount += totalAmount; 
+                    totalRevenueBulanIni += amountPaid; // LUNAS dihitung sebagai revenue masuk
                 } else if (inv.status === 'DP') {
                     totalDPAmount += amountPaid;
                     totalBelumLunasAmount += (totalAmount - amountPaid);
+                    totalRevenueBulanIni += amountPaid; // DP dihitung sebagai revenue masuk
                 } else if (inv.status === 'BELUM BAYAR') {
                     totalBelumLunasAmount += totalAmount;
                 }
-
-                // Kalkulasi Revenue Bulan Ini (Uang yang BENAR-BENAR MASUK)
-                const invoiceMonthYear = inv.created_at ? inv.created_at.substring(0, 7) : '';
-
-                if (invoiceMonthYear === currentMonthYear) {
-                    totalRevenueBulanIni += amountPaid; 
-                }
-
             });
             
             document.getElementById('stat-total-lunas').textContent = formatRupiah(totalLunasAmount);
@@ -1587,19 +1680,60 @@
                 `;
                 invoicesTableBody.appendChild(row);
             });
+            
+            // PENTING: Attach listeners setelah semua baris dibuat (Poin 3)
+            document.querySelectorAll('.download-invoice-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    showToast("Info", `Fungsi Download Invoice #${e.target.dataset.id} sedang dikembangkan!`);
+                });
+            });
+            
+            document.querySelectorAll('.pay-invoice-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    // Logika untuk mengubah status ke LUNAS
+                    const invoiceId = e.target.dataset.id;
+                    const inv = invoices.find(i => i.id == invoiceId);
+                    if (inv && inv.status !== 'LUNAS') {
+                        updateInvoiceStatus(invoiceId, inv.amount);
+                    } else {
+                        showToast("Info", "Invoice sudah lunas atau tidak ditemukan.", true);
+                    }
+                });
+            });
+        }
+        
+        // FUNGSI BARU: Update Status Invoice ke LUNAS
+        async function updateInvoiceStatus(invoiceId, totalAmount) {
+            const { error } = await supabaseClient
+                .from('invoices')
+                .update({ status: 'LUNAS', amount_paid: totalAmount })
+                .eq('id', invoiceId)
+                .eq('user_id', userId); 
+
+            if (error) {
+                console.error("Error updating invoice status:", error);
+                showToast("Error", "Gagal memperbarui status invoice: " + error.message, true);
+            } else {
+                showToast("Sukses!", "Invoice berhasil dilunasi!");
+                fetchInvoices(); // Refresh tabel
+                fetchDashboardStats(); // Refresh dashboard stats
+            }
         }
 
-        // ======================= FUNGSI LAINNYA =======================
+
+        // ======================= FUNGSI KALENDER =======================
         const calendarGrid = document.getElementById('calendar-grid');
         const monthYearTitle = document.getElementById('calendar-month-year');
         const prevMonthBtn = document.getElementById('prev-month-btn');
         const nextMonthBtn = document.getElementById('next-month-btn');
-        let currentDate = new Date(2025, 10, 16); 
+        let currentDate = new Date(); // Gunakan tanggal hari ini
 
         function renderCalendar(year, month) {
             calendarGrid.innerHTML = '';
+            
+            // Set tanggal ke bulan yang benar (pertahankan tanggal saat ini)
             currentDate.setFullYear(year, month, 1);
-            const todayTarget = new Date(2025, 10, 16);
+            const today = new Date();
 
             monthYearTitle.textContent = currentDate.toLocaleString('id-ID', {
                 month: 'long',
@@ -1613,26 +1747,79 @@
             }
 
             for (let day = 1; day <= daysInMonth; day++) {
+                const currentDay = new Date(year, month, day);
                 let dayClass = "calendar-day p-2 rounded-lg cursor-pointer hover:bg-white/10";
                 
-                if (year === todayTarget.getFullYear() && month === todayTarget.getMonth() && day === todayTarget.getDate()) {
+                // Cek apakah hari ini
+                if (currentDay.toDateString() === today.toDateString()) {
                     dayClass += " today";
                 }
+                
+                // Cek apakah ada event di tanggal ini (Poin 4)
+                const eventCount = upcomingBookingsData.filter(b => 
+                    new Date(b.date).toDateString() === currentDay.toDateString()
+                ).length;
 
-                calendarGrid.innerHTML += `<span class="${dayClass}">${day}</span>`;
+                if (eventCount > 0 && currentDay.toDateString() !== today.toDateString()) {
+                     dayClass += " has-event border-pink-400";
+                }
+                
+                // Render tanggal
+                calendarGrid.innerHTML += `<span class="${dayClass}" data-day="${day}">
+                    ${day}
+                    ${eventCount > 0 ? `<div class="mt-1 text-xs font-semibold ${getStatusTextColor(upcomingBookingsData.find(b => new Date(b.date).toDateString() === currentDay.toDateString())?.payment_status || 'DP')}">(${eventCount} Event)</div>` : ''}
+                </span>`;
             }
+            renderCalendarEventsList();
         }
+
+        // FUNGSI BARU: Render daftar acara di sidebar kalender
+        function renderCalendarEventsList() {
+            const listContainer = document.getElementById('upcoming-events-list');
+            listContainer.innerHTML = '';
+            
+            const currentMonthBookings = upcomingBookingsData.filter(b => {
+                const bookingDate = new Date(b.date);
+                return bookingDate.getMonth() === currentDate.getMonth() && bookingDate.getFullYear() === currentDate.getFullYear();
+            }).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            if (currentMonthBookings.length === 0) {
+                 listContainer.innerHTML = `<div class="text-center text-gray-400">Tidak ada acara yang terjadwal bulan ini.</div>`;
+                 return;
+            }
+            
+            currentMonthBookings.forEach(b => {
+                const eventDate = new Date(b.date);
+                const day = eventDate.getDate();
+                const monthName = eventDate.toLocaleString('id-ID', { month: 'short' });
+                const time = eventDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                const statusText = b.payment_status;
+                const statusColor = getStatusTextColor(statusText);
+
+                const eventCard = document.createElement('div');
+                eventCard.className = `rounded-lg bg-white/5 p-4 border-l-4 border-pink-600`; // Border untuk highlight
+                eventCard.innerHTML = `
+                    <p class="font-semibold text-white">${day} ${monthName} - ${b.client_name}</p>
+                    <p class="text-sm text-gray-300">${b.packages.name}</p>
+                    <p class="text-xs ${statusColor} font-bold">${statusText} | ${time}</p>
+                `;
+                listContainer.appendChild(eventCard);
+            });
+        }
+
 
         function changeMonth(delta) {
             currentDate.setMonth(currentDate.getMonth() + delta);
             renderCalendar(currentDate.getFullYear(), currentDate.getMonth());
+            // Karena upcomingBookingsData sudah dimuat global, kita hanya perlu merender ulang
         }
         
         prevMonthBtn.addEventListener('click', () => changeMonth(-1));
         nextMonthBtn.addEventListener('click', () => changeMonth(1));
         
         document.addEventListener('DOMContentLoaded', () => {
-            renderCalendar(currentDate.getFullYear(), currentDate.getMonth());
+             // Tanggal awal hanya perlu di-render, data akan dimuat dari onAuthStateChange
+             renderCalendar(currentDate.getFullYear(), currentDate.getMonth());
         });
 
     </script>
